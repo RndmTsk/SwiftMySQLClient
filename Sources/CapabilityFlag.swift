@@ -9,13 +9,9 @@
 import Foundation
 
 public extension MySQL {
+    // https://dev.mysql.com/doc/internals/en/capability-flags.html#packet-Protocol::CapabilityFlag
     public struct CapabilityFlag: OptionSet {
-        public let rawValue: UInt32
-        public init(rawValue: UInt32) {
-            self.rawValue = rawValue
-        }
-
-        // https://dev.mysql.com/doc/internals/en/capability-flags.html#packet-Protocol::CapabilityFlag
+        // MARK: - Constants
         public static let clientLongPassword              = CapabilityFlag(rawValue: 0x00000001)
         public static let clientFoundRows                 = CapabilityFlag(rawValue: 0x00000002)
         public static let clientLongFlag                  = CapabilityFlag(rawValue: 0x00000004)
@@ -42,6 +38,15 @@ public extension MySQL {
         public static let clientSessionTrack              = CapabilityFlag(rawValue: 0x00800000)
         public static let clientDeprecateEOF              = CapabilityFlag(rawValue: 0x01000000)
 
+        // MARK: - Properties
+        public let rawValue: UInt32
+
+        // MARK: - Lifecycle Functions
+        public init(rawValue: UInt32) {
+            self.rawValue = rawValue
+        }
+
+        // MARK: - Static Helper Functions
         public static func with(upper: CapabilityFlag, lower: CapabilityFlag) -> CapabilityFlag {
             return CapabilityFlag(rawValue: upper.rawValue | lower.rawValue)
         }

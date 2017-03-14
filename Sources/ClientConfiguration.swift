@@ -12,13 +12,10 @@ public extension MySQL {
     public struct ClientConfiguration {
         public class Defaults {
             public static let capabilities: CapabilityFlag = [
+                .clientLongPassword, // TODO: (TL) Dig into capabilities more
                 .clientProtocol41,
-                .clientLongFlag,
                 .clientTransactions,
-                .clientSecureConnection,
-                .clientLocalFiles,
-                .clientMultiStatements,
-                .clientMultiResults,
+                .clientSecureConnection
             ]
         }
 

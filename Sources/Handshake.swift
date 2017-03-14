@@ -10,7 +10,7 @@ import Foundation
 
 public extension MySQL {
     // https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::Handshake
-    public struct Handshake {
+    public struct Handshake { // TODO: (TL) Should detect protocol version and adjust
         private class Constants {
             static let bitsPerByte = 8
         }
@@ -32,7 +32,7 @@ public extension MySQL {
             }
 
             var index = 0
-            self.protocolVersion = data[index]
+            self.protocolVersion = data[index] // TODO: (TL) Sliding window extension or something?
             self.serverVersion = serverVersionString
             index += serverVersionString.utf8.count + 1 // advance past end of string
 
@@ -76,7 +76,6 @@ public extension MySQL {
             } else {
                 self.authPluginName = ""
             }
-            print("Done!")
         }
 
         // MARK: - Helper Functions
