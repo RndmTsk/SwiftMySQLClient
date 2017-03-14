@@ -41,5 +41,9 @@ public extension MySQL {
         public static let clientCanHandleExpiredPasswords = CapabilityFlag(rawValue: 0x00400000)
         public static let clientSessionTrack              = CapabilityFlag(rawValue: 0x00800000)
         public static let clientDeprecateEOF              = CapabilityFlag(rawValue: 0x01000000)
+
+        public static func with(upper: CapabilityFlag, lower: CapabilityFlag) -> CapabilityFlag {
+            return CapabilityFlag(rawValue: upper.rawValue | lower.rawValue)
+        }
     }
 }

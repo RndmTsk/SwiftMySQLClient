@@ -8,9 +8,9 @@
 
     import Foundation
 
+/*
 public extension MySQL {
     public final class Socket {
-/*
         private class Constants {
             static let headerLength: Int8 = 3
         }
@@ -142,6 +142,6 @@ public extension MySQL {
              }
              */
         }
-         */
     }
 }
+ */

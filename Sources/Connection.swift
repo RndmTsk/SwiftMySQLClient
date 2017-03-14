@@ -11,6 +11,11 @@ import Socket
 
 public extension MySQL {
     public final class Connection {
+        // MARK: - Constants
+        private struct Constants {
+            static let headerSize = 81
+        }
+
         // MARK: - Enums
         public enum State {
             case disconnected
@@ -37,14 +42,14 @@ public extension MySQL {
 
         // MARK: - Open / Close
         public func open() throws {
-/*
             if socket == nil {
-                socket = try Socket(host: configuration.host, port: configuration.port)
+                socket = try Socket.create()
             }
-            try connect()
-            try authorize()
-            // TODO: (TL) Pieces missing
- */
+            guard let socket = socket else {
+                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "UNIMPLEMENTED"])
+            }
+            try connect(with: socket)
+            try authorize(socket)
         }
         
         public func close() throws {
@@ -54,20 +59,16 @@ public extension MySQL {
         }
         
         // MARK: - Private Helper Functions
-        private func connect() throws {
-            guard let socket = socket else {
-                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "UNIMPLEMENTED"])
-            }
-//            try socket.open()
-            // Store mysql_handshake
+        private func connect(with socket: Socket) throws {
             state = .connecting
-            // TODO: (TL) Pieces missing
+            try socket.connect(to: configuration.host, port: configuration.port)
         }
 
-        private func authorize() throws {
-            guard let socket = socket else {
+        private func authorize(_ socket: Socket) throws {
+            guard let handshake = try parseHandshake(from: socket) else {
                 throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "UNIMPLEMENTED"])
             }
+            print("Handshake received: \(handshake)")
             // TODO: (TL) Dynamic capabilities via plugins?
             // configuration.capabilities ...
             // TODO: (TL) Password stuff
@@ -82,6 +83,27 @@ public extension MySQL {
 //            try socket.close()
             state = .disconnecting
             // TODO: (TL) Pieces missing
+        }
+
+        private func parseHandshake(from socket: Socket) throws -> Handshake? {
+            var data = Data(capacity: Constants.headerSize)
+            let bytesRead = try socket.read(into: &data)
+            print("[\(bytesRead)] Data: \(data)")
+            // TODO: (TL) Verify bytesRead to ensure handshake size
+            let (messageLength, sequenceNumber) = try parseHandshakeHeader(from: data)
+            print("[\(sequenceNumber)] Message Length: \(messageLength)")
+            let body = data.subdata(in: data.startIndex.advanced(by: 4)..<data.endIndex)
+            return Handshake(data: body)
+        }
+
+        private func parseHandshakeHeader(from header: Data) throws -> (messageLength: UInt32, sequenceNumber: Int) {
+            if header.count < 3 {
+                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "UNIMPLEMENTED"])
+            }
+            let messageLength = UInt32(header[2]) << 16 | UInt32(header[1]) << 8 | UInt32(header[0])
+            let sequenceNumber = Int(header[3])
+
+            return (messageLength, sequenceNumber)
         }
     }
 }
