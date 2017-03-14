@@ -73,30 +73,15 @@ public extension MySQL {
                 throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "UNIMPLEMENTED"])
             }
             print("Handshake received: \(handshake)")
-            // TODO: (TL) Dynamic capabilities via plugins?
+
             // TODO: (TL) Check handshake capabilities available
-            // configuration.capabilities ...
-            
-            var data: [UInt8] = configuration.capabilities.rawValue.uint8Array
+            let handshakeResponse = HandshakeResponse(handshake: handshake, configuration: configuration)
 
-            // Max packet size (4 bytes)
-            data.append(contentsOf: UInt32.max.uint8Array)
-            data.append(handshake.characterset)
-
-            if let username = configuration.credentials?.user {
-                data.append(contentsOf: username.utf8)
-            }
-            // TODO: (TL) auth-response (NULL terminated)
-            // TODO: (TL) database (NULL terminated)
-            // TODO: (TL) auth-plugin-name (NULL terminated)
-
-            let responseData = Data(bytes: data)
-            try socket.write(from: responseData)
+            try socket.write(from: handshakeResponse.data)
             var response = Data(capacity: 100)
             let bytesRead = try socket.read(into: &response)
             print("[\(bytesRead)] \(response)")
             // TODO: (TL) Password stuff
-//            let handshakeData = socket.read()
         }
 
         private func disconnect(from socket: Socket) throws {

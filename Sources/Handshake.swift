@@ -19,7 +19,6 @@ public extension MySQL {
         let serverVersion: String
         let connectionID: UInt32
         let authPluginDataPart1: String
-
         let capabilityFlags: CapabilityFlag // NOTE: In position 6 & 9
         let characterset: UInt8
         let statusFlags: StatusFlag
