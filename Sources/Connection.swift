@@ -128,17 +128,20 @@ public extension MySQL {
             guard let responseFlag = data.first else {
                 throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "RESPONSE LENGTH IS ZERO"])
             }
-            var result = (value: 0, remaining: data.subdata(in: 1..<data.count))
+            var remaining = data.subdata(in: 1..<data.count)
             if responseFlag == MySQL.Constants.ok &&
-                result.remaining.count > MySQL.Constants.okResponseMinLength {
+                remaining.count > MySQL.Constants.okResponseMinLength {
                 // Properly formatted OK
                 print("[RESPONSE] OK")
-                var result = result.remaining.lenencInt
-                let affectedRows = result.value
+                let affectedRows: Int
+                (affectedRows, remaining) = remaining.lenencInt
                 print("affectedRows: \(affectedRows)")
-                result = result.remaining.lenencInt
-                let lastInsertID = result.value
+
+                let lastInsertID: Int
+                (lastInsertID, remaining) = remaining.lenencInt
                 print("lastInsertID: \(lastInsertID)")
+
+                // TODO: (TL) Capture server capabilities
  /*
                 if capabilities & CLIENT_PROTOCOL_41 {
                     int<2>	status_flags	Status Flags

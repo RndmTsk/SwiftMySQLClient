@@ -22,3 +22,8 @@ public class MySQL {
         public static let eofResponseMaxLength = 9
     }
 }
+
+public func powi(_ base: Int, _ exponent: Int) -> Int {
+    // Using pow this way is stupid ...
+    return Int(pow(Float(base), Float(exponent)))
+}

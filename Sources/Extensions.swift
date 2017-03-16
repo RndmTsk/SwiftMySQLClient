@@ -46,13 +46,15 @@ public extension Data {
     }
 
     public func int(of length: Int) -> Int {
-        guard length < 8 else { // TODO: (TL) Sizeof(Int)
+        guard length > 0 else {
+            return 0
+        }
+        guard length < MemoryLayout<Int>.size else {
             return 0 // TODO: (TL) error? (too long)
         }
         var result = 0
         for offset in 1..<length {
-            let shiftAmount = Int(pow(2, Float(offset - 1)))
-            result |= Int(self[offset]) << shiftAmount // Using pow this way is stupid ...
+            result |= Int(self[offset]) << powi(2, offset - 1)
         }
         return result | Int(self[0]) // Last byte doesn't need to be shifted
     }
