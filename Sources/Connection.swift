@@ -13,7 +13,7 @@ public extension MySQL {
     public final class Connection {
         // MARK: - Constants
         private struct Constants {
-            static let headerSize = 81
+            static let headerSize = 4
         }
 
         // MARK: - Enums
@@ -69,7 +69,7 @@ public extension MySQL {
         }
 
         private func authorize(_ socket: Socket) throws {
-            guard let handshake = try parseHandshake(from: socket) else {
+            guard let handshake = try receiveHandshake(from: socket) else {
                 throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "UNIMPLEMENTED"])
             }
             print("Handshake received: \(handshake)")
@@ -78,10 +78,16 @@ public extension MySQL {
             let handshakeResponse = HandshakeResponse(handshake: handshake, configuration: configuration)
 
             try socket.write(from: handshakeResponse.data)
-            var response = Data(capacity: 100)
+            var response = Data(capacity: Constants.headerSize)
             let bytesRead = try socket.read(into: &response)
             print("[\(bytesRead)] \(response)")
-            // TODO: (TL) Password stuff
+            let (messageLength, sequenceNumber) = try parseHeader(from: response)
+            print("[\(sequenceNumber)] Message Length: \(messageLength)")
+            if (response.count - Constants.headerSize) < messageLength {
+                // TODO: (TL) ...
+                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "NEED TO GET MORE DATA"])
+            }
+            try parseSimpleResponse(from: response.subdata(in: Constants.headerSize..<response.count))
         }
 
         private func disconnect(from socket: Socket) throws {
@@ -91,25 +97,73 @@ public extension MySQL {
             // TODO: (TL) Pieces missing
         }
 
-        private func parseHandshake(from socket: Socket) throws -> Handshake? {
+        // TODO: (TL) read_packet (header + verify body length, fetch more if needed?)
+        private func receiveHandshake(from socket: Socket) throws -> Handshake? {
             var data = Data(capacity: Constants.headerSize)
             let bytesRead = try socket.read(into: &data)
             print("[\(bytesRead)] Data: \(data)")
             // TODO: (TL) Verify bytesRead to ensure handshake size
-            let (messageLength, sequenceNumber) = try parseHandshakeHeader(from: data)
+            let (messageLength, sequenceNumber) = try parseHeader(from: data)
             print("[\(sequenceNumber)] Message Length: \(messageLength)")
-            let body = data.subdata(in: data.startIndex.advanced(by: 4)..<data.endIndex)
+            if (data.count - Constants.headerSize) < messageLength {
+                // TODO: (TL) ...
+                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "NEED TO GET MORE DATA"])
+            }
+            let range: Range<Data.Index> = data.startIndex.advanced(by: Constants.headerSize)..<data.endIndex
+            let body = data.subdata(in: range)
             return Handshake(data: body)
         }
 
-        private func parseHandshakeHeader(from header: Data) throws -> (messageLength: UInt32, sequenceNumber: Int) {
-            if header.count < 3 {
-                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "UNIMPLEMENTED"])
+        private func parseHeader(from header: Data) throws -> (messageLength: Int, sequenceNumber: Int) {
+            if header.count < Constants.headerSize {
+                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "INCORRECT HEADER SIZE"])
             }
-            let messageLength = UInt32(header[2]) << 16 | UInt32(header[1]) << 8 | UInt32(header[0])
-            let sequenceNumber = Int(header[3])
+            let messageLength = header.int(of: 3) // Message length is 3 bytes
+            let sequenceNumber = Int(header[3]) // Sequence number is 1 byte
 
             return (messageLength, sequenceNumber)
+        }
+
+        private func parseSimpleResponse(from data: Data) throws {
+            guard let responseFlag = data.first else {
+                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "RESPONSE LENGTH IS ZERO"])
+            }
+            var result = (value: 0, remaining: data.subdata(in: 1..<data.count))
+            if responseFlag == MySQL.Constants.ok &&
+                result.remaining.count > MySQL.Constants.okResponseMinLength {
+                // Properly formatted OK
+                print("[RESPONSE] OK")
+                var result = result.remaining.lenencInt
+                let affectedRows = result.value
+                print("affectedRows: \(affectedRows)")
+                result = result.remaining.lenencInt
+                let lastInsertID = result.value
+                print("lastInsertID: \(lastInsertID)")
+ /*
+                if capabilities & CLIENT_PROTOCOL_41 {
+                    int<2>	status_flags	Status Flags
+                    int<2>	warnings	number of warnings
+                } elseif capabilities & CLIENT_TRANSACTIONS {
+                    int<2>	status_flags	Status Flags
+                }
+                if capabilities & CLIENT_SESSION_TRACK {
+                    string<lenenc>	info	human readable status information
+                    if status_flags & SERVER_SESSION_STATE_CHANGED {
+                        string<lenenc>	session_state_changes	session state info
+                    }
+                } else {
+                    string<EOF>	info	human readable status information
+                }
+ */
+            } else if data[0] == MySQL.Constants.eof && data.count < MySQL.Constants.eofResponseMaxLength { // Properly formatted EOF
+                print("[RESPONSE] EOF")
+            } else if data[0] == MySQL.Constants.err { // Properly formatted error
+                print("[RESPONSE] ERR")
+                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "RESPONSE = ERR"])
+            } else { // Unknown response
+                print("[RESPONSE] ??")
+                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "RESPONSE = ???"])
+            }
         }
     }
 }

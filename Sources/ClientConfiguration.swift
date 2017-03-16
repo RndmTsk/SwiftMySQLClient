@@ -26,12 +26,12 @@ public extension MySQL {
         public let capabilities: MySQL.CapabilityFlag
 
         public init(host: String,
-                    port: Int32 = 3306,
+                    port: Int = 3306,
                     database: String? = nil,
                     credentials: URLCredential? = nil,
                     capabilities: MySQL.CapabilityFlag = ClientConfiguration.Defaults.capabilities) {
             self.host = host
-            self.port = port
+            self.port = Int32(port)
             self.database = database
             self.credentials = credentials
 

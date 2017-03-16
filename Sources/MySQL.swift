@@ -17,5 +17,8 @@ public class MySQL {
         public static let localInFile: UInt8 = 0xfb
         public static let eof: UInt8         = 0xfe
         public static let err: UInt8         = 0xff
+
+        public static let okResponseMinLength  = 7
+        public static let eofResponseMaxLength = 9
     }
 }
