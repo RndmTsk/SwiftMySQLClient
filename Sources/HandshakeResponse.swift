@@ -15,9 +15,9 @@ public extension MySQL {
 
         init(handshake: Handshake, configuration: ClientConfiguration) {
             // TODO: (TL) Dynamic capabilities via plugins?
-            var rawData = configuration.capabilities.rawValue.uint8Array
+            var rawData = MySQL.lsbEncoded(configuration.capabilities.rawValue)
             // Max packet size (4 bytes)
-            rawData.append(contentsOf: UInt32.max.uint8Array)
+            rawData.append(contentsOf: MySQL.lsbEncoded(UInt32.max))
             rawData.append(handshake.characterset)
             // 23 bytes of reserved 0s
             rawData.append(contentsOf: [UInt8](repeating: 0, count: 23))
@@ -27,20 +27,17 @@ public extension MySQL {
                 rawData.append(0)
             }
             if let password = configuration.credentials?.password {
-                rawData.append(UInt8(password.lengthOfBytes(using: .utf8)))
-                rawData.append(contentsOf: password.utf8) // TODO: (TL) Munged?
+                if handshake.capabilityFlags.contains(.clientPluginAuthLenecClientData) {
+                    rawData.append(contentsOf: MySQL.lenenc(password.utf8.count))
+                    rawData.append(contentsOf: password.utf8)
+                } else if handshake.capabilityFlags.contains(.clientSecureConnection) {
+                    rawData.append(contentsOf: MySQL.lsbEncoded(password.utf8.count, to: 1))
+                    rawData.append(contentsOf: password.utf8)
+                } else {
+                    rawData.append(contentsOf: password.utf8)
+                    rawData.append(0)
+                }
             }
-/* TODO: (TL) auth-response (NULL terminated)
-            if capabilities & CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA {
-                lenenc-int     length of auth-response
-                string[n]      auth-response
-            } else if capabilities & CLIENT_SECURE_CONNECTION {
-                1              length of auth-response
-                string[n]      auth-response
-            } else {
-                string[NUL]    auth-response
-            }
- */
             // Database (NULL terminated)
             if handshake.capabilityFlags.contains(.clientConnectWithDB),
                 let database = configuration.database {
