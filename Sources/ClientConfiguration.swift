@@ -15,7 +15,8 @@ public extension MySQL {
                 .clientLongPassword, // TODO: (TL) Dig into capabilities more
                 .clientProtocol41,
                 .clientTransactions,
-                .clientSecureConnection
+                .clientSecureConnection,
+                .clientDeprecateEOF
             ]
         }
 

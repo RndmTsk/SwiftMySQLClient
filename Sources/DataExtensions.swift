@@ -9,21 +9,63 @@
 import Foundation
 
 public extension Data {
-    public func nullEncodedString(at offset: Int) -> String? {
-        let stringStart = startIndex.advanced(by: offset)
-        var stringEnd = stringStart
-        repeat {
-            stringEnd += 1
-        } while stringEnd < endIndex && self[stringEnd] != 0
-        
-        return String(data: subdata(in: stringStart..<stringEnd), encoding: .utf8)
+    public func nullEncodedString(at offset: Int = 0) -> String? {
+        return encodedString(at: offset, terminator: 0)
     }
 
-    public func removeNullEncodedString(at offset: Int) -> (value: String?, remaining: Data) {
+    public func removeNullEncodedString(at offset: Int = 0) -> (value: String?, remaining: Data) {
         let string = nullEncodedString(at: offset)
         let stringLength = string?.utf8.count ?? 0
         let remainingData = subdata(in: stringLength..<count)
         return (string, remainingData)
+    }
+
+    public mutating func removingNullEncodedString(at offset: Int = 0) -> String? {
+        let string = nullEncodedString(at: offset)
+        let stringLength = string?.utf8.count ?? 0
+        self = subdata(in: stringLength..<count)
+        return string
+    }
+
+    public func eofEncodedString(at offset: Int = 0) -> String? {
+        return encodedString(at: offset, terminator: MySQL.Constants.eof)
+    }
+
+    public func removeEOFEncodedString(at offset: Int = 0) -> (value: String?, remaining: Data) {
+        let string = eofEncodedString(at: offset)
+        let stringEndIndex = string?.utf8.count ?? 0
+        let remainingData = subdata(in: stringEndIndex..<count)
+        return (string, remainingData)
+    }
+
+    public mutating func removingEOFEncodedString(at offset: Int = 0) -> String? {
+        let string = eofEncodedString(at: offset)
+        let stringEndIndex = string?.utf8.count ?? 0
+        self = subdata(in: stringEndIndex..<count)
+        return string
+    }
+
+    public func removeString(of length: Int, at offset: Int = 0) -> (value: String?, remaining: Data) {
+        let startIndex = offset < count ? offset : count
+        let endIndex = (offset + length) < count ? (offset + length) : count
+        let string = String(data: subdata(in: startIndex..<endIndex), encoding: .utf8)
+        return (string, subdata(in: endIndex..<count))
+    }
+
+    public mutating func removingString(of length: Int, at offset: Int = 0) -> String? {
+        let (string, data) = removeString(of: length, at: offset)
+        self = data
+        return string
+    }
+
+    public func encodedString(at offset: Int = 0, terminator value: UInt8 = 0) -> String? {
+        let stringStart = startIndex.advanced(by: offset)
+        var stringEnd = stringStart
+        repeat {
+            stringEnd += 1
+        } while stringEnd < endIndex && self[stringEnd] != value
+        
+        return String(data: subdata(in: stringStart..<stringEnd), encoding: .utf8)
     }
 
     public var lenencInt: (value: Int, remaining: Data) {
@@ -48,6 +90,19 @@ public extension Data {
     }
 
     // TODO: (TL) uint of length
+    public func removedInt(of length: Int) -> (value: Int, remaining: Data) {
+        let value = int(of: length)
+        let end = length < count ? length : count // Why doesn't min(length, count) compile?
+        return (value, subdata(in: 0..<end))
+    }
+
+    public mutating func removingInt(of length: Int) -> Int {
+        let value = int(of: length)
+        droppingFirst(length)
+
+        return value
+    }
+
     public func int(of length: Int) -> Int {
         guard length > 0 else {
             return 0

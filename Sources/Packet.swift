@@ -9,21 +9,25 @@
 import Foundation
 
 public extension MySQL {
-    public struct Packet {
+    // https://dev.mysql.com/doc/internals/en/mysql-packet.html
+    public struct Packet: CustomStringConvertible {
         public final class Constants {
             public static let minLength = 4
         }
         public let length: Int
         public let number: Int
         public let body: Data
+        public var description: String {
+            return "#\(number) - Body: \(body) {L:\(length)}"
+        }
 
         init(data: Data) throws {
             guard data.count > Constants.minLength else {
-                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "INCORRECT HEADER SIZE"])
+                throw PacketError.incorrectHeaderLength
             }
             let length = data.int(of: 3)
             guard (data.count - Constants.minLength) == length else {
-                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "INCORRECT BODY SIZE"])
+                throw PacketError.incorrectBodyLength
             }
             // Message length takes up the first 3 bytes
             self.length = length
