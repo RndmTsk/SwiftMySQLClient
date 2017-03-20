@@ -18,7 +18,7 @@ public extension MySQL {
             var rawData = MySQL.lsbEncoded(configuration.capabilities.rawValue)
             // Max packet size (4 bytes)
             rawData.append(contentsOf: MySQL.lsbEncoded(UInt32.max))
-            rawData.append(handshake.characterset)
+            rawData.append(UInt8(handshake.characterset)) // TODO: (TL) ...
             // 23 bytes of reserved 0s
             rawData.append(contentsOf: [UInt8](repeating: 0, count: 23))
             if let username = configuration.credentials?.user {
@@ -44,6 +44,7 @@ public extension MySQL {
                 rawData.append(contentsOf: database.utf8)
                 rawData.append(0)
             }
+
 /* TODO: (TL) auth-plugin-name (NULL terminated)
             if capabilities & CLIENT_PLUGIN_AUTH {
                 string[NUL]    auth plugin name

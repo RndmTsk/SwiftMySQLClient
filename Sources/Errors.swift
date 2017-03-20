@@ -9,12 +9,22 @@
 import Foundation
 
 public extension MySQL {
-    public struct ServerError: Error {
+    public struct ServerError: Error, CustomStringConvertible {
         public let code: Int
         public let marker: String
         public let state: String
         public let message: String
  
+        public var description: String {
+            let cp41Message: String
+            if marker.isEmpty && state.isEmpty {
+                cp41Message = ""
+            } else {
+                cp41Message = marker.appending(state).appending(": ")
+            }
+            return "[MySQL Error #\(code)] \(cp41Message)\(message)"
+        }
+
         public init(data: Data, capabilities: CapabilityFlag) {
             var remaining = data
             self.code = remaining.removingInt(of: 2)

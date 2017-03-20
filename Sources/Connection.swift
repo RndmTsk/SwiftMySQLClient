@@ -156,30 +156,7 @@ public extension MySQL {
                 print("[RESPONSE] EOF")
             } else if responseFlag == MySQL.Constants.err { // Properly formatted error
                 print("[RESPONSE] ERR")
-                let errorCode = remaining.int(of: 2)
-                remaining.droppingFirst(2)
-                if configuration.capabilities.contains(.clientProtocol41) {
-                    // TODO: (TL) ...
-                    // string[1]	sql_state_marker	# marker of the SQL State
-                    let sqlStateMarker = String(remaining[1])
-                    remaining.droppingFirst(1)
-                    print("State Marker: \(sqlStateMarker)")
-                    // string[5]	sql_state	SQL State
-                    let sqlState = String(data: remaining.subdata(in: 0..<5), encoding: .utf8)
-                    remaining.droppingFirst(5)
-                    print("State: \(sqlState)")
-                }
-                var errorEnd = remaining.startIndex
-                repeat {
-                    errorEnd += 1
-                } while errorEnd < remaining.endIndex && remaining[errorEnd] != MySQL.Constants.eof
-                
-                let error: String?
-                (error, remaining) = remaining.removeEOFEncodedString()
-                guard let unwrappedError = error else {
-                    throw NSError(domain: "TODO: (TL)", code: errorCode, userInfo: ["ERROR" : "UNKNOWN"])
-                }
-                throw NSError(domain: "TODO: (TL)", code: errorCode, userInfo: ["ERROR" : unwrappedError])
+                throw ServerError(data: remaining, capabilities: configuration.capabilities)
             } else { // Unknown response
                 print("[RESPONSE] ??")
                 throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "RESPONSE = ???"])

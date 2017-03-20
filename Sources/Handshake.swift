@@ -8,71 +8,76 @@
 
 import Foundation
 
-public extension MySQL {
+internal extension MySQL {
     // https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::Handshake
-    public struct Handshake { // TODO: (TL) Should detect protocol version and adjust
-        private class Constants {
-            static let bitsPerByte = 8
-        }
-
-        let protocolVersion: UInt8
+    // TODO: (TL) Different versions
+    internal struct Handshake: CustomStringConvertible {
+        let protocolVersion: Int
         let serverVersion: String
         let connectionID: Int
         let authPluginDataPart1: String
         let capabilityFlags: CapabilityFlag // NOTE: In position 6 & 9
-        let characterset: UInt8
+        let characterset: Int
         let statusFlags: StatusFlag
         let authPluginName: String
 
-        public init?(data: Data) {
-            var index = 0
-            self.protocolVersion = data[index] // TODO: (TL) Sliding window extension or something?
-            index += 1
+        var description: String {
+            return "[MySQL Handshake V\(protocolVersion)]{MySQL V: \(serverVersion)} CID#\(connectionID) ... TODO: (TL) ..."
+        }
 
-            guard let serverVersionString = data.nullEncodedString(at: index) else {
-                return nil
+        internal init?(data: Data) {
+            var result = data
+            self.protocolVersion = result.removingInt(of: 1)
+
+            guard let serverVersion = result.removingNullEncodedString() else {
+                return nil // TODO: (TL) throw instead?
             }
-            self.serverVersion = serverVersionString
-            index += serverVersionString.utf8.count + 1 // advance past end of string
+            self.serverVersion = serverVersion
 
-            // Actually this is unsigned
-            self.connectionID = data.int(of: 4, at: index)
-            index += 4 // connection id is 4 bytes
+            // connection id is 4 bytes (UNSIGNED!)
+            self.connectionID = result.removingInt(of: 4)
 
-            self.authPluginDataPart1 = String(data: data.subdata(in: index..<index+1), encoding: .utf8) ?? ""
-            index += 2 // 2 bytes for auth plugin data
-            index += 1 // 1 byte of filler (unused at the moment)
+            // 2 bytes for auth plugin data
+            guard let authPluginData = result.removingString(of: 2) else {
+                return nil // TODO: (TL) throw instead?
+            }
+            self.authPluginDataPart1 = authPluginData
+
+            // 1 byte of filler (unused at the moment)
+            result.droppingFirst(1)
 
             // Optional pieces after the filler //
-
             var capFlag1: CapabilityFlag = []
-            if index + 1 < data.count {
-                capFlag1 = CapabilityFlag(rawValue: UInt32(data[index]) << 8 | UInt32(data[index + 1]))
+            // 2 bytes for capability flag part 1
+            if result.count > 1 {
+                capFlag1 = CapabilityFlag(rawValue: UInt32(result.removingInt(of: 2)))
             }
-            index += 2 // 2 bytes for capability flags
 
-            self.characterset = index < data.count ? data[index] : 0
-            index += 1 // 1 byte for character set
+            // 1 byte for character sets
+            if result.count > 0 {
+                self.characterset = result.removingInt(of: 1)
+            } else {
+                self.characterset = 0 // TODO: (TL) throw? abort?
+            }
 
-            if index + 1 < data.count {
-                self.statusFlags = StatusFlag(rawValue: UInt16(data[index]) << 8 | UInt16(data[index + 1]))
+            // 2 bytes for status flags
+            if result.count > 1 {
+                self.statusFlags = StatusFlag(rawValue: UInt16(result.removingInt(of: 2)))
             } else {
                 self.statusFlags = []
             }
-            index += 2 // 2 bytes for status flags
 
+            // 2 bytes for upper capability flags
             var capFlag2: CapabilityFlag = []
-            if index + 1 < data.count {
-                capFlag2 = CapabilityFlag(rawValue: UInt32(data[index]) << 24 | UInt32(data[index + 1]) << 16)
+            if result.count > 1 {
+                capFlag2 = CapabilityFlag(rawValue: UInt32(result.removingInt(of: 2) << 24))
             }
-            index += 2 // 2 bytes for upper capability flags
             self.capabilityFlags = CapabilityFlag.with(upper: capFlag2, lower: capFlag1)
 
-            // What do we do with this?
-            let length: Int = index < data.count ? Int(data[index]) : 0
-            index += 1 // 1 for plugin length
-
-            self.authPluginName = data.nullEncodedString(at: index) ?? ""
+            // TODO: (TL) What do we do with this?
+            // 1 byte for plugin length
+            let pluginLength = result.count > 0 ? result.removingInt(of: 1) : 0
+            self.authPluginName = result.removingNullEncodedString() ?? ""
         }
     }
 }

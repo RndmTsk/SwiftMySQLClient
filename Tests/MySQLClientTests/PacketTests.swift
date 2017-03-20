@@ -41,7 +41,7 @@ class PacketTests: XCTestCase {
         XCTFail("Expected error from empty packet")
     }
 
-    func test03ComQuit() {
+    func test03ProperPacket() {
         do {
             // https://dev.mysql.com/doc/internals/en/mysql-packet.html
             let data = Data(bytes: [1,
