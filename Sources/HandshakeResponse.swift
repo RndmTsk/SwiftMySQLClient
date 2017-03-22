@@ -22,9 +22,8 @@ public extension MySQL {
             // 23 bytes of reserved 0s
             rawData.append(contentsOf: [UInt8](repeating: 0, count: 23))
             if let username = configuration.credentials?.user {
-                // TODO: (TL) Fixed length - include size first?
+                // TODO: (TL) Fixed length - what is the length?
                 rawData.append(contentsOf: username.utf8)
-                rawData.append(0)
             }
             if let password = configuration.credentials?.password {
                 if handshake.capabilityFlags.contains(.clientPluginAuthLenecClientData) {

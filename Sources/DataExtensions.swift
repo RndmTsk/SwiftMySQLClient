@@ -9,74 +9,83 @@
 import Foundation
 
 public extension Data {
-    public func nullEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String? {
+    // MARK: - String Functions
+    public func nullEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String {
         return encodedString(at: offset, terminator: 0, with: encoding)
     }
 
-    public func removeNullEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> (value: String?, remaining: Data) {
+    public func removeNullEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> (value: String, remaining: Data) {
         let string = nullEncodedString(at: offset, with: encoding)
-        let stringLength = string?.utf8.count ?? 0
-        let remainingData = subdata(in: stringLength..<count)
-        return (string, remainingData)
-    }
-
-    public mutating func removingNullEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String? {
-        let string = nullEncodedString(at: offset, with: encoding)
-        let stringLength = string?.utf8.count ?? 0
-        self = subdata(in: stringLength..<count)
-        return string
-    }
-
-    public func eofEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String? {
-        return encodedString(at: offset, terminator: MySQL.Constants.eof)
-    }
-
-    public func removeEOFEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> (value: String?, remaining: Data) {
-        let string = eofEncodedString(at: offset, with: encoding)
-        let stringEndIndex = string?.utf8.count ?? 0
+        let stringEndIndex = remainingLength(after: string, at: offset)
         let remainingData = subdata(in: stringEndIndex..<count)
         return (string, remainingData)
     }
 
-    public mutating func removingEOFEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String? {
-        let string = eofEncodedString(at: offset, with: encoding)
-        let stringEndIndex = string?.utf8.count ?? 0
-        self = subdata(in: stringEndIndex..<count)
+    public mutating func removingNullEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String {
+        let (string, data) = removeNullEncodedString(at: offset, with: encoding)
+        self = data
         return string
     }
 
-    public func string(of length: Int, at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String? {
-        let startIndex = offset < count ? offset : count
-        let endIndex = (offset + length) < count ? (offset + length) : count
-        return String(data: subdata(in: startIndex..<endIndex), encoding: encoding)
+    public func eofEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String {
+        return encodedString(at: offset, terminator: MySQL.Constants.eof)
     }
 
-    public func removeString(of length: Int, at offset: Int = 0, with encoding: String.Encoding = .utf8) -> (value: String?, remaining: Data) {
+    public func removeEOFEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> (value: String, remaining: Data) {
+        let string = eofEncodedString(at: offset, with: encoding)
+        let stringEndIndex = remainingLength(after: string, at: offset)
+        let remainingData = subdata(in: stringEndIndex..<count)
+        return (string, remainingData)
+    }
+
+    public mutating func removingEOFEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String {
+        let (string, data) = removeEOFEncodedString(at: offset, with: encoding)
+        self = data
+        return string
+    }
+
+    public func string(of length: Int, at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String {
+        // Using `min` throws a compiler error ...
+        let stringStart = startIndex + offset < count ? startIndex.advanced(by: offset) : count
+        let stringEnd = offset + length < count ? offset.advanced(by: length) :  count
+        return String(data: subdata(in: stringStart..<stringEnd), encoding: encoding) ?? ""
+    }
+
+    public func removeString(of length: Int, at offset: Int = 0, with encoding: String.Encoding = .utf8) -> (value: String, remaining: Data) {
         let fixedLengthString = string(of: length, at: offset, with: encoding)
-        let stringLength = fixedLengthString?.utf8.count ?? 0
-        var endIndex = offset + stringLength
-        if count < endIndex {
-            endIndex = count
-        }
-        return (fixedLengthString, subdata(in: endIndex..<count))
+        let stringEndIndex = remainingLength(after: fixedLengthString, at: offset, 0)
+        return (fixedLengthString, subdata(in: stringEndIndex..<count))
     }
 
-    public mutating func removingString(of length: Int, at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String? {
+    public mutating func removingString(of length: Int, at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String {
         let (string, data) = removeString(of: length, at: offset, with: encoding)
         self = data
         return string
     }
 
-    public func encodedString(at offset: Int = 0, terminator value: UInt8 = 0, with encoding: String.Encoding = .utf8) -> String? {
+    public func encodedString(at offset: Int = 0, terminator value: UInt8 = 0, with encoding: String.Encoding = .utf8) -> String {
         let stringStart = startIndex.advanced(by: offset)
         var stringEnd = stringStart
         repeat {
             stringEnd += 1
         } while stringEnd < endIndex && self[stringEnd] != value
         
-        return String(data: subdata(in: stringStart..<stringEnd), encoding: encoding)
+        return String(data: subdata(in: stringStart..<stringEnd), encoding: encoding) ?? ""
     }
 
+    // MARK: - String Helper Functions
+    private func remainingLength(after string: String, at offset: Int = 0, _ terminatorLength: Int = 1) -> Int {
+        let index: Int
+        if string.isEmpty {
+            index = offset + terminatorLength
+        } else {
+            index = offset + string.utf8.count + terminatorLength
+        }
+        return count < index ? count : index
+    }
+    
+
+    // MARK: - Int Functions
     public var lenencInt: (value: Int, remaining: Data) {
         guard let typeFlag = self.first else {
             return (0, self)
@@ -121,15 +130,17 @@ public extension Data {
             return 0 // TODO: (TL) error? (too long)
         }
         var result = 0
-        for offset in 1..<length {
-            result |= Int(self[offset]) << powi(2, offset - 1)
+        for offset in 0..<length {
+            result |= Int(self[offset]) << (8 * offset)
         }
-        return result | Int(self[0]) // Last byte doesn't need to be shifted
+        return result
     }
 
     public func int(of length: Int, at offsetStart: Int) -> Int {
         let offsetEnd = length + offsetStart
-        guard offsetEnd < count else {
+        guard offsetStart < count,
+            offsetEnd < count,
+            offsetStart < offsetEnd else {
             return 0 // TODO: (TL) error? (too long)
         }
         return subdata(in: offsetStart..<offsetEnd).int(of: length)

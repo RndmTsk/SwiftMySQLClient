@@ -10,7 +10,7 @@ import Foundation
 
 internal extension MySQL {
     // https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::Handshake
-    // TODO: (TL) Different versions
+    // TODO: (TL) Protocol to allow for different versions
     internal struct Handshake: CustomStringConvertible {
         let protocolVersion: Int
         let serverVersion: String
@@ -19,6 +19,7 @@ internal extension MySQL {
         let capabilityFlags: CapabilityFlag // NOTE: In position 6 & 9
         let characterset: Int
         let statusFlags: StatusFlag
+        let authPluginLength: Int
         let authPluginName: String
 
         var description: String {
@@ -28,20 +29,13 @@ internal extension MySQL {
         internal init?(data: Data) {
             var result = data
             self.protocolVersion = result.removingInt(of: 1)
-
-            guard let serverVersion = result.removingNullEncodedString() else {
-                return nil // TODO: (TL) throw instead?
-            }
-            self.serverVersion = serverVersion
+            self.serverVersion = result.removingNullEncodedString()
 
             // connection id is 4 bytes (UNSIGNED!)
             self.connectionID = result.removingInt(of: 4)
 
-            // 2 bytes for auth plugin data
-            guard let authPluginData = result.removingString(of: 2) else {
-                return nil // TODO: (TL) throw instead?
-            }
-            self.authPluginDataPart1 = authPluginData
+            // 2 bytes for auth plugin data -- 8 bytes
+            self.authPluginDataPart1 = result.removingString(of: 8)
 
             // 1 byte of filler (unused at the moment)
             result.droppingFirst(1)
@@ -70,14 +64,14 @@ internal extension MySQL {
             // 2 bytes for upper capability flags
             var capFlag2: CapabilityFlag = []
             if result.count > 1 {
-                capFlag2 = CapabilityFlag(rawValue: UInt32(result.removingInt(of: 2) << 24))
+                capFlag2 = CapabilityFlag(rawValue: UInt32(result.removingInt(of: 2) << 16))
             }
             self.capabilityFlags = CapabilityFlag.with(upper: capFlag2, lower: capFlag1)
 
             // TODO: (TL) What do we do with this?
             // 1 byte for plugin length
-            let pluginLength = result.count > 0 ? result.removingInt(of: 1) : 0
-            self.authPluginName = result.removingNullEncodedString() ?? ""
+            self.authPluginLength = result.removingInt(of: 1)
+            self.authPluginName = result.removingNullEncodedString()
         }
     }
 }
