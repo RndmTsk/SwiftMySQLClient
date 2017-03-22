@@ -42,7 +42,7 @@ internal extension MySQL {
             // Optional pieces after the filler //
 
             // 2 bytes for capability flag part 1
-            let capLower = CapabilityFlag(rawValue: UInt32(result.removingInt(of: 2)))
+            var capabilityFlags = CapabilityFlag(rawValue: UInt32(result.removingInt(of: 2)))
 
             // 1 byte for character sets
             self.characterset = result.removingInt(of: 1)
@@ -51,23 +51,33 @@ internal extension MySQL {
             self.statusFlags = StatusFlag(rawValue: UInt16(result.removingInt(of: 2)))
 
             // 2 bytes for upper capability flags
-            let capUpper = CapabilityFlag(rawValue: UInt32(result.removingInt(of: 2) << 16))
-            self.capabilityFlags = CapabilityFlag.with(upper: capUpper, lower: capLower)
+            capabilityFlags.insert(CapabilityFlag(rawValue: UInt32(result.removingInt(of: 2) << 16)))
+            self.capabilityFlags = capabilityFlags
 
             // TODO: (TL) What do we do with this?
-            // 1 byte for plugin length
+            // 1 byte for plugin length (non-zero if CLIENT_PLUGIN_AUTH)
             let authPluginLength = result.removingInt(of: 1)
 
             // 10 bytes are reserved
             result.droppingFirst(10)
 
-            // According to the Python and golang drivers
-            // the other half is 12 bytes
-            // This seems to agree with authPluginLength (21) - first bytes (8) - \0 (1)
-            authCipher.append(result.removingString(of: authPluginLength - 9))
-
+            if capabilityFlags.contains(.clientSecureConnection) {
+                // According to the Python and golang drivers
+                // the other half is 12 bytes
+                // This seems to agree with authPluginLength (21) - first bytes (8) - \0 (1)
+                if authPluginLength > 8 {
+                    authCipher.append(result.removingString(of: authPluginLength - 9))
+                } else {
+                    authCipher.append(result.removingNullEncodedString())
+                }
+            }
             self.authCipher = authCipher
-            self.authPluginName = result.removingNullEncodedString()
+
+            if capabilityFlags.contains(.clientPluginAuth) {
+                self.authPluginName = result.removingNullEncodedString()
+            } else {
+                self.authPluginName = ""
+            }
         }
     }
 }
