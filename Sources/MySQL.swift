@@ -26,7 +26,7 @@ public class MySQL {
         public static let lenenc8ByteInt: UInt8 = 0xfe
     }
 
-    public static func lsbEncoded(_ uint32: UInt32, to length: Int = MemoryLayout<UInt16>.size) -> [UInt8] {
+    public static func lsbEncoded(_ uint32: UInt32, to length: Int = MemoryLayout<UInt32>.size) -> [UInt8] {
         return lsbEncoded(UInt(uint32), to: UInt(length))
     }
 
@@ -75,14 +75,4 @@ public class MySQL {
 
         return result
     }
-}
-
-public func powi(_ base: Int, _ exponent: Int) -> Int {
-    // Using pow this way is stupid ...
-    return Int(pow(Float(base), Float(exponent)))
-}
-
-public func powui16(_ base: Int, _ exponent: Int) -> UInt16 {
-    // Using pow this way is stupid ...
-    return UInt16(pow(Float(base), Float(exponent)))
 }

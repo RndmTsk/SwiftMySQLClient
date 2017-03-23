@@ -156,7 +156,7 @@ public extension Data {
         return UInt16(self[1]) << 8 | UInt16(firstByte)
     }
 
-    public mutating func droppingFirst(_ n: Int) {
+    public mutating func droppingFirst(_ n: Int = 1) {
         if n < count {
             self = subdata(in: n..<count)
         } else {
@@ -164,7 +164,7 @@ public extension Data {
         }
     }
 
-    public mutating func droppingLast(_ n: Int) {
+    public mutating func droppingLast(_ n: Int = 1) {
         if n < count {
             self = subdata(in: 0..<(count - n))
         } else {

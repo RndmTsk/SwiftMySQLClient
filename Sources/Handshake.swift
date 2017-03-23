@@ -67,6 +67,7 @@ internal extension MySQL {
                 // This seems to agree with authPluginLength (21) - first bytes (8) - \0 (1)
                 if authPluginLength > 8 {
                     authCipher.append(result.removingString(of: authPluginLength - 9))
+                    result.droppingFirst()
                 } else {
                     authCipher.append(result.removingNullEncodedString())
                 }
