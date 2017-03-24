@@ -83,7 +83,25 @@ public extension Data {
         }
         return count < index ? count : index
     }
-    
+
+    // MARK: - [UInt8] Functions
+    public func removeFirstBytes(_ n: Int) -> (value: [UInt8] , remaining: Data) {
+        var data = self
+        let length = n < count ? n : count
+        let value = Array(data[0..<length])
+        var startIndex = length + 1
+        if count < startIndex {
+            startIndex = count
+        }
+        let remaining = data.subdata(in: startIndex..<count)
+        return (value, remaining)
+    }
+
+    public mutating func removingFirstBytes(_ n: Int) -> [UInt8] {
+        let (result, data) = removeFirstBytes(n)
+        self = data
+        return result
+    }
 
     // MARK: - Int Functions
     public var lenencInt: (value: Int, remaining: Data) {

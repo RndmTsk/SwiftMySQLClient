@@ -101,7 +101,6 @@ public extension MySQL {
         private func receive(from socket: Socket) throws -> Packet {
             var data = Data(capacity: Constants.headerSize)
             let bytesRead = try socket.read(into: &data)
-            print("[\(bytesRead)] Data: \(data)")
             // TODO: (TL) see if we need to read more
             return try Packet(data: data)
         }
@@ -113,16 +112,17 @@ public extension MySQL {
             packetData.append(sequenceNumber)
             packetData.append(data)
             try socket.write(from: packetData)
+            print("[WRITE #\(sequenceNumber)] \(data.count) bytes")
         }
 
         private func parseSimpleResponse(from data: Data) throws {
             guard let responseFlag = data.first else {
-                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "RESPONSE LENGTH IS ZERO"])
+                throw ServerError.emptyResponse(with: serverCapabilities)
             }
             var remaining = data.subdata(in: 1..<data.count)
             if responseFlag == MySQL.Constants.ok
                 && remaining.count > MySQL.Constants.okResponseMinLength {
-                // Properly formatted OK
+                // Properly formatted OK packet
                 print("[RESPONSE] OK")
                 let affectedRows: Int
                 (affectedRows, remaining) = remaining.lenencInt
@@ -137,9 +137,8 @@ public extension MySQL {
                 print("Status Flags: \(status)")
                 if serverCapabilities.contains(.clientProtocol41) {
                     // TODO: (TL) ...
-                    let numberOfWarnings = remaining.int(of: 2)
+                    let numberOfWarnings = remaining.removingInt(of: 2)
                     print("Number of warnings: \(numberOfWarnings)")
-                    remaining.droppingFirst(2)
                 }
  /*
                 if capabilities & CLIENT_SESSION_TRACK {
@@ -152,14 +151,20 @@ public extension MySQL {
                 }
  */
             } else if responseFlag == MySQL.Constants.eof
-                && data.count < MySQL.Constants.eofResponseMaxLength { // Properly formatted EOF
+                && data.count < MySQL.Constants.eofResponseMaxLength {
+                // Properly formatted EOF packet
                 print("[RESPONSE] EOF")
-            } else if responseFlag == MySQL.Constants.err { // Properly formatted error
-                print("[RESPONSE] ERR")
-                throw ServerError(data: remaining, capabilities: configuration.capabilities)
+                if serverCapabilities.contains(.clientProtocol41) {
+                    let numberOfWarnings = remaining.removingInt(of: 2)
+                    let statusFlags = remaining.removingInt(of: 2)
+                    print("Number of warnings: \(numberOfWarnings)")
+                    print("Status Flags: \(statusFlags)")
+                }
+            } else if responseFlag == MySQL.Constants.err {
+                // Properly formatted error packet
+                throw ServerError(data: remaining, capabilities: serverCapabilities)
             } else { // Unknown response
-                print("[RESPONSE] ??")
-                throw NSError(domain: "TODO: (TL)", code: 0, userInfo: ["ERROR" : "RESPONSE = ???"])
+                throw ServerError.unknown(with: serverCapabilities)
             }
         }
     }

@@ -35,6 +35,7 @@ public extension MySQL {
             self.number = Int(data[3])
             // Body is remaining data
             self.body = data.subdata(in: Constants.minLength..<data.count)
+            print("[READ #\(number)] \(length) bytes")
         }
     }
 }

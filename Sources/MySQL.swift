@@ -27,21 +27,21 @@ public class MySQL {
     }
 
     public static func lsbEncoded(_ uint32: UInt32, to length: Int = MemoryLayout<UInt32>.size) -> [UInt8] {
-        return lsbEncoded(UInt(uint32), to: UInt(length))
+        return lsbEncoded(UInt(uint32), to: length)
     }
 
     public static func lsbEncoded(_ int: Int, to length: Int = 8) -> [UInt8] {
         // TODO: (TL) Sign bit??
-        return lsbEncoded(UInt(int), to: UInt(length))
+        return lsbEncoded(UInt(int), to: length)
     }
  
-    public static func lsbEncoded(_ uint: UInt, to length: UInt = 8) -> [UInt8] {
+    public static func lsbEncoded(_ uint: UInt, to length: Int = 8) -> [UInt8] {
         var result = [UInt8]()
         for index in 0..<length {
-            let position = index * 8 // Chunk in 8 byte segments
+            let position = UInt(index) * 8 // Chunk in 8 byte segments
             // Mask the last 8 bytes to avoid overflow (= crash)
             let value = UInt8((uint >> position) & 0xff)
-            result.append(value)
+            result[length - index - 1] = value
         }
         return result
     }

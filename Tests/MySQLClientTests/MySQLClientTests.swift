@@ -3,7 +3,7 @@ import XCTest
 
 class MySQLClientTests: XCTestCase {
     func testConnect() {
-        let credentials = URLCredential(user: "root", password: "root", persistence: .none)
+        let credentials = URLCredential(user: "snack ", password: "snack", persistence: .none)
         let configuration = MySQL.ClientConfiguration(host: "localhost", credentials: credentials)
         let connection = MySQL.Connection(configuration: configuration)
         do {

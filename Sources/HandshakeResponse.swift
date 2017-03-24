@@ -60,28 +60,27 @@ public extension MySQL {
             // Always send a password?
             let password = configuration.credentials?.native41SecurePassword(with: handshake.authCipher) ?? [UInt8]()
             if handshake.capabilityFlags.contains(.clientPluginAuthLenecClientData) {
-                // TODO: (TL) lenenc-int auth-response.count
-                // TODO: (TL) auth-response
-                let lenenc = MySQL.lenenc(password.count)
-                rawData.append(contentsOf: lenenc)
+                // Encrypted password (Length encoded prefix)
+                rawData.append(contentsOf: MySQL.lenenc(password.count))
                 rawData.append(contentsOf: password)
                 
                 print("clientPluginAuthLenencClientData")
             } else if handshake.capabilityFlags.contains(.clientSecureConnection) {
-                
-                // TODO: (TL) auth-response.count (1 byte)
-                // TODO: (TL) auth-response
+                // Encrypted password (Length prefixed)
+                rawData.append(UInt8(password.count & 0xff))
+                rawData.append(contentsOf: password)
                 print("clientSecureConnection")
             } else {
-                // TODO: (TL) auth-response
+                // Encrypted password (NULL terminated)
+                rawData.append(contentsOf: password)
                 rawData.append(0)
                 print("none")
             }
             if handshake.capabilityFlags.contains(.clientConnectWithDB),
                 let database = configuration.database {
                 // Database (NULL terminated)
-                rawData.append(contentsOf: database.utf8)
-                rawData.append(0)
+                // rawData.append(contentsOf: database.utf8)
+                // rawData.append(0)
             }
 
             if handshake.capabilityFlags.contains(.clientPluginAuth) {
@@ -90,12 +89,13 @@ public extension MySQL {
             }
 
             if handshake.capabilityFlags.contains(.clientConnectAttrs) {
-                rawData.append(0)
+                // rawData.append(0)
                 // TODO: (TL) lenenc-int key-values.count
                 // TODO: (TL) lenenc-str key
                 // TODO: (TL) lenenc-str value
                 print("clientConnectAttrs")
             }
+            rawData.append(0)
             self.data = Data(bytes: rawData)
         }
     }

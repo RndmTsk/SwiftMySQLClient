@@ -10,6 +10,14 @@ import Foundation
 
 public extension MySQL {
     public struct ServerError: Error, CustomStringConvertible {
+        private struct Constants {
+            static let standardMarker = "#"
+            static let emptyResponseState = "00000"
+            static let emtpyMessage = "Response length was zero, no data was received."
+            static let unknownState = "00001"
+            static let unknownMessage = "An unknown error occurred attempting to receive data from the server."
+        }
+
         public let code: Int
         public let marker: String
         public let state: String
@@ -40,6 +48,29 @@ public extension MySQL {
                 self.state = ""
             }
             self.message = remaining.removingEOFEncodedString()
+        }
+
+        private init(capabilities: CapabilityFlag,
+                     code: Int = Int.max,
+                     marker: String = Constants.standardMarker,
+                     state: String = Constants.unknownState,
+                     message: String = Constants.unknownMessage) {
+            self.code = code
+            self.marker = marker
+            self.state = state
+            self.message = message
+        }
+
+        public static func unknown(with capabilities: CapabilityFlag = []) -> ServerError {
+            return ServerError(capabilities: capabilities)
+        }
+
+        public static func emptyResponse(with capabilities: CapabilityFlag = []) -> ServerError {
+            return ServerError(capabilities: capabilities,
+                               code: Int.max - 1,
+                               marker: Constants.standardMarker,
+                               state: Constants.emptyResponseState,
+                               message: Constants.emtpyMessage)
         }
     }
 
