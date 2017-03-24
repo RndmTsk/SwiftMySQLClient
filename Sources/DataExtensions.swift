@@ -101,6 +101,12 @@ public extension Data {
     }
 
     // MARK: - Int Functions
+    public mutating func removingLenencInt() -> Int {
+        let (value, remaining) = lenencInt
+        self = remaining
+        return value
+    }
+
     public var lenencInt: (value: Int, remaining: Data) {
         guard let typeFlag = self.first else {
             return (0, self)

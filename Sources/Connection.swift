@@ -121,15 +121,13 @@ public extension MySQL {
             }
             var remaining = data.subdata(in: 1..<data.count)
             if responseFlag == MySQL.Constants.ok
-                && remaining.count > MySQL.Constants.okResponseMinLength {
+                && data.count >= MySQL.Constants.okResponseMinLength {
                 // Properly formatted OK packet
                 print("[RESPONSE] OK")
-                let affectedRows: Int
-                (affectedRows, remaining) = remaining.lenencInt
+                let affectedRows = remaining.removingLenencInt()
                 print("affectedRows: \(affectedRows)")
 
-                let lastInsertID: Int
-                (lastInsertID, remaining) = remaining.lenencInt
+                let lastInsertID = remaining.removingLenencInt()
                 print("lastInsertID: \(lastInsertID)")
 
                 status = StatusFlag(rawValue: remaining.uInt16)

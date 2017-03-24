@@ -95,7 +95,6 @@ public extension MySQL {
                 // TODO: (TL) lenenc-str value
                 print("clientConnectAttrs")
             }
-            rawData.append(0)
             self.data = Data(bytes: rawData)
         }
     }
