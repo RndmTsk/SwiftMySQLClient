@@ -79,8 +79,8 @@ public extension MySQL {
             if handshake.capabilityFlags.contains(.clientConnectWithDB),
                 let database = configuration.database {
                 // Database (NULL terminated)
-                // rawData.append(contentsOf: database.utf8)
-                // rawData.append(0)
+                rawData.append(contentsOf: database.utf8)
+                rawData.append(0)
             }
 
             if handshake.capabilityFlags.contains(.clientPluginAuth) {

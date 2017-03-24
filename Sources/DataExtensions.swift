@@ -89,10 +89,7 @@ public extension Data {
         var data = self
         let length = n < count ? n : count
         let value = Array(data[0..<length])
-        var startIndex = length + 1
-        if count < startIndex {
-            startIndex = count
-        }
+        let startIndex = count < length ? count : length
         let remaining = data.subdata(in: startIndex..<count)
         return (value, remaining)
     }
