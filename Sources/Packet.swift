@@ -8,16 +8,16 @@
 
 import Foundation
 
-public extension MySQL {
+internal extension MySQL {
     // https://dev.mysql.com/doc/internals/en/mysql-packet.html
-    public struct Packet: CustomStringConvertible {
-        public final class Constants {
-            public static let minLength = 4
+    internal struct Packet: CustomStringConvertible {
+        internal final class Constants {
+            internal static let minLength = 4
         }
-        public let length: Int
-        public let number: Int
-        public let body: Data
-        public var description: String {
+        internal let length: Int
+        internal let number: Int
+        internal let body: Data
+        internal var description: String {
             return "#\(number) - Body: \(body) {L:\(length)}"
         }
 

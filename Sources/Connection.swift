@@ -122,32 +122,8 @@ public extension MySQL {
             var remaining = data.subdata(in: 1..<data.count)
             if responseFlag == MySQL.Constants.ok
                 && data.count >= MySQL.Constants.okResponseMinLength {
-                // Properly formatted OK packet
-                print("[RESPONSE] OK")
-                let affectedRows = remaining.removingLenencInt()
-                print("affectedRows: \(affectedRows)")
-
-                let lastInsertID = remaining.removingLenencInt()
-                print("lastInsertID: \(lastInsertID)")
-
-                status = StatusFlag(rawValue: remaining.uInt16)
-                remaining.droppingFirst(2)
-                print("Status Flags: \(status)")
-                if serverCapabilities.contains(.clientProtocol41) {
-                    // TODO: (TL) ...
-                    let numberOfWarnings = remaining.removingInt(of: 2)
-                    print("Number of warnings: \(numberOfWarnings)")
-                }
- /*
-                if capabilities & CLIENT_SESSION_TRACK {
-                    string<lenenc>	info	human readable status information
-                    if status_flags & SERVER_SESSION_STATE_CHANGED {
-                        string<lenenc>	session_state_changes	session state info
-                    }
-                } else {
-                    string<EOF>	info	human readable status information
-                }
- */
+                let okPacket = OKPacket(data: remaining, serverCapabilities: serverCapabilities)
+                print("[RESPONSE - OK] \(okPacket)")
             } else if responseFlag == MySQL.Constants.eof
                 && data.count < MySQL.Constants.eofResponseMaxLength {
                 // Properly formatted EOF packet
