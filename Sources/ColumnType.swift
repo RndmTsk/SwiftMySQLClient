@@ -8,14 +8,14 @@
 
 import Foundation
 
+/// Namespace everything with MySQL - the PostgreSQL driver does this.
 public extension MySQL {
-    public struct ColumnType: OptionSet {
-        public let rawValue: UInt8
-        public init(rawValue: UInt8) {
-            self.rawValue = rawValue
-        }
+    // https://dev.mysql.com/doc/internals/en/com-query-response.html#packet-Protocol::ColumnType
 
-        // https://dev.mysql.com/doc/internals/en/com-query-response.html#packet-Protocol::ColumnType
+    /// A structure representing the various column types available in MySQL.
+    public struct ColumnType: OptionSet { // TODO: (TL) Should this be an OptionSet or an enum?
+
+        // MARK: - Convenience Constants
         public static let decimal     = ColumnType(rawValue: 0x00)
         public static let tiny        = ColumnType(rawValue: 0x01)
         public static let short       = ColumnType(rawValue: 0x02)
@@ -47,5 +47,19 @@ public extension MySQL {
         public static let var_string  = ColumnType(rawValue: 0xfd)
         public static let string      = ColumnType(rawValue: 0xfe)
         public static let geometry    = ColumnType(rawValue: 0xff)
+
+        // MARK: - Properties
+
+        /// The raw `UInt8` value of the column type.
+        public let rawValue: UInt8
+
+        /**
+         Constructs a `ColumnType` with the given `UInt8` value.
+
+         - parameter rawValue: The raw `UInt8` value of the column type (bitwise OR'ed) - TODO: (TL) Do we need this type of support - NO?
+         */
+        public init(rawValue: UInt8) {
+            self.rawValue = rawValue
+        }
     }
 }

@@ -8,10 +8,13 @@
 
 import Foundation
 
+/// Namespace everything with MySQL - the PostgreSQL driver does this.
 public extension MySQL {
     // https://dev.mysql.com/doc/internals/en/capability-flags.html#packet-Protocol::CapabilityFlag
+
+    /// A structure representing the various capabilities supported by the client or server.
     public struct CapabilityFlag: OptionSet {
-        // MARK: - Constants
+        // MARK: - Convenience Constants
         public static let clientLongPassword              = CapabilityFlag(rawValue: 0x00000001)
         public static let clientFoundRows                 = CapabilityFlag(rawValue: 0x00000002)
         public static let clientLongFlag                  = CapabilityFlag(rawValue: 0x00000004)
@@ -39,14 +42,30 @@ public extension MySQL {
         public static let clientDeprecateEOF              = CapabilityFlag(rawValue: 0x01000000)
 
         // MARK: - Properties
+
+        /// The raw `UInt32` value of the flags.
         public let rawValue: UInt32
 
         // MARK: - Lifecycle Functions
+
+        /**
+         Constructs a `CapabilityFlag` with the given raw `UInt32` value.
+
+         - parameter rawValue: The raw `UInt32` value of the flags (bitwise OR'ed).
+         */
         public init(rawValue: UInt32) {
             self.rawValue = rawValue
         }
 
         // MARK: - Static Helper Functions
+
+        /**
+         A helper function to build a `CapabilityFlag` given a separate lower 16 bits and upper 16 bits.
+
+         - parameter upper: The upper 16 bits of the `CapabilityFlag`.
+         - parameter lower: The lower 16 bits of the `CapabilityFlag`.
+         - returns: A `CapabilityFlag` where the upper bits are shifted and bitwise OR'ed with the lower bits.
+         */
         public static func with(upper: CapabilityFlag, lower: CapabilityFlag) -> CapabilityFlag {
             return CapabilityFlag(rawValue: upper.rawValue | lower.rawValue)
         }

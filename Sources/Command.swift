@@ -8,14 +8,13 @@
 
 import Foundation
 
+/// Namespace everything with MySQL - the PostgreSQL driver does this.
 public extension MySQL {
-    public struct Command: OptionSet {
-        public let rawValue: UInt8
-        public init(rawValue: UInt8) {
-            self.rawValue = rawValue
-        }
-        
-        // https://dev.mysql.com/doc/internals/en/command-phase.html
+    // https://dev.mysql.com/doc/internals/en/command-phase.html
+
+    /// A structure representing the various commands supported by MySQL.
+    public struct Command: OptionSet { // TODO: (TL) Should this be an OptionSet or an enum?
+        // MARK: - Convenience Constants
         public static let sleep            = Command(rawValue: 0x00)
         public static let quit             = Command(rawValue: 0x01)
         public static let initDB           = Command(rawValue: 0x02)
@@ -48,5 +47,19 @@ public extension MySQL {
         public static let daemon           = Command(rawValue: 0x1d)
         public static let binlogDumpGTID   = Command(rawValue: 0x1e)
         public static let resetConnection  = Command(rawValue: 0x1f)
+
+        // MARK: - Properties
+
+        /// The raw `UInt8` value of the column type.
+        public let rawValue: UInt8
+
+        /**
+         Constructs a `Command` with the given `UInt8` value.
+         
+         - parameter rawValue: The raw `UInt8` value of the command (bitwise OR'ed) - TODO: (TL) Do we need this type of support - NO?
+         */
+        public init(rawValue: UInt8) {
+            self.rawValue = rawValue
+        }
     }
 }

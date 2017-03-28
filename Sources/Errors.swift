@@ -33,10 +33,11 @@ public extension MySQL {
             return "[MySQL Error #\(code)] \(cp41Message)\(message)"
         }
 
-        public init(data: Data, capabilities: CapabilityFlag) {
+        public init(data: Data, capabilities: CapabilityFlag?) {
             var remaining = data
+            let serverCapabilities = capabilities ?? []
             self.code = remaining.removingInt(of: 2)
-            if capabilities.contains(.clientProtocol41) {
+            if serverCapabilities.contains(.clientProtocol41) {
                 // TODO: (TL) ...
                 // string[1]	sql_state_marker	# marker of the SQL State
                 self.marker = remaining.removingString(of: 1)
@@ -50,22 +51,23 @@ public extension MySQL {
             self.message = remaining.removingEOFEncodedString()
         }
 
-        private init(capabilities: CapabilityFlag,
+        private init(capabilities: CapabilityFlag?,
                      code: Int = Int.max,
                      marker: String = Constants.standardMarker,
                      state: String = Constants.unknownState,
                      message: String = Constants.unknownMessage) {
+            // TODO: (TL) Not using capabilities
             self.code = code
             self.marker = marker
             self.state = state
             self.message = message
         }
 
-        public static func unknown(with capabilities: CapabilityFlag = []) -> ServerError {
+        public static func unknown(with capabilities: CapabilityFlag? = []) -> ServerError {
             return ServerError(capabilities: capabilities)
         }
 
-        public static func emptyResponse(with capabilities: CapabilityFlag = []) -> ServerError {
+        public static func emptyResponse(with capabilities: CapabilityFlag? = []) -> ServerError {
             return ServerError(capabilities: capabilities,
                                code: Int.max - 1,
                                marker: Constants.standardMarker,
@@ -74,8 +76,9 @@ public extension MySQL {
         }
     }
 
-    public struct ClientError: Error {
-        
+    public enum ClientError: Error {
+        case socketUnavailable
+        case invalidHandshake
     }
 
     public enum PacketError: Error {

@@ -32,19 +32,21 @@ internal extension MySQL {
             return response
         }
 
-        init(data: Data, serverCapabilities: CapabilityFlag) {
+        init(data: Data, serverCapabilities: CapabilityFlag?) {
             var remaining = data
             self.affectedRows = remaining.removingLenencInt()
             self.lastInsertID = remaining.removingLenencInt()
             let status = StatusFlag(rawValue: remaining.uInt16)
             remaining.droppingFirst(2)
 
-            if serverCapabilities.contains(.clientProtocol41) {
+            if let serverCapabilities = serverCapabilities,
+                serverCapabilities.contains(.clientProtocol41) {
                 self.numberOfWarnings = remaining.removingInt(of: 2)
             } else {
                 self.numberOfWarnings = nil
             }
-            if serverCapabilities.contains(.clientSessionTrack) {
+        if let serverCapabilities = serverCapabilities,
+            serverCapabilities.contains(.clientSessionTrack) {
                 let infoLength = remaining.removingLenencInt()
                 self.info = remaining.removingString(of: infoLength)
                 if status.contains(.sessionStateChanged) {
