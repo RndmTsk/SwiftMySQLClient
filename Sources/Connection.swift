@@ -135,7 +135,7 @@ public extension MySQL {
 
             let response = try receive(from: socket)
             // TODO: (TL) Verify sequence number
-            try parseCommandResponse(from: response.body)
+            try parseCommandResponse(from: response.body, with: handshake.capabilityFlags)
         }
 
         /**
@@ -196,21 +196,20 @@ public extension MySQL {
          - parameter data: The raw data received from the socket.
          - throws: Any errors encountered in constructing the packet response, any errors parsed from the server.
          */
-        private func parseCommandResponse(from data: Data) throws {
+        private func parseCommandResponse(from data: Data, with capabilities: CapabilityFlag) throws {
             guard let responseFlag = data.first else {
-                throw ServerError.emptyResponse(with: handshake?.capabilityFlags)
+                throw ServerError.emptyResponse(with: capabilities)
             }
             var remaining = data.subdata(in: 1..<data.count)
             if responseFlag == MySQL.Constants.ok
                 && data.count >= MySQL.Constants.okResponseMinLength {
-                let okPacket = OKPacket(data: remaining, serverCapabilities: handshake?.capabilityFlags)
+                let okPacket = OKPacket(data: remaining, serverCapabilities: capabilities)
                 print("[RESPONSE - OK] \(okPacket)")
             } else if responseFlag == MySQL.Constants.eof
                 && data.count < MySQL.Constants.eofResponseMaxLength {
                 // Properly formatted EOF packet
                 print("[RESPONSE] EOF")
-                if let serverCapabilities = handshake?.capabilityFlags,
-                    serverCapabilities.contains(.clientProtocol41) {
+                if capabilities.contains(.clientProtocol41) {
                     let numberOfWarnings = remaining.removingInt(of: 2)
                     let statusFlags = remaining.removingInt(of: 2)
                     print("Number of warnings: \(numberOfWarnings)")
@@ -218,9 +217,9 @@ public extension MySQL {
                 }
             } else if responseFlag == MySQL.Constants.err {
                 // Properly formatted error packet
-                throw ServerError(data: remaining, capabilities: handshake?.capabilityFlags)
+                throw ServerError(data: remaining, capabilities: capabilities)
             } else { // Unknown response
-                throw ServerError.unknown(with: handshake?.capabilityFlags)
+                throw ServerError.unknown(with: capabilities)
             }
         }
     }

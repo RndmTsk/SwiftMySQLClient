@@ -32,21 +32,27 @@ internal extension MySQL {
             return response
         }
 
-        init(data: Data, serverCapabilities: CapabilityFlag?) {
+        init(data: Data, serverCapabilities: CapabilityFlag) {
             var remaining = data
             self.affectedRows = remaining.removingLenencInt()
             self.lastInsertID = remaining.removingLenencInt()
-            let status = StatusFlag(rawValue: remaining.uInt16)
-            remaining.droppingFirst(2)
 
-            if let serverCapabilities = serverCapabilities,
-                serverCapabilities.contains(.clientProtocol41) {
+            let status: StatusFlag
+            if serverCapabilities.contains(.clientProtocol41) {
+                status = StatusFlag(rawValue: remaining.uInt16)
+                remaining.droppingFirst(2)
                 self.numberOfWarnings = remaining.removingInt(of: 2)
             } else {
+                if serverCapabilities.contains(.clientTransactions) {
+                    status = StatusFlag(rawValue: remaining.uInt16)
+                    remaining.droppingFirst(2)
+                } else {
+                    status = []
+                }
                 self.numberOfWarnings = nil
             }
-        if let serverCapabilities = serverCapabilities,
-            serverCapabilities.contains(.clientSessionTrack) {
+
+            if serverCapabilities.contains(.clientSessionTrack) {
                 let infoLength = remaining.removingLenencInt()
                 self.info = remaining.removingString(of: infoLength)
                 if status.contains(.sessionStateChanged) {
@@ -64,16 +70,18 @@ internal extension MySQL {
     }
 
     // https://dev.mysql.com/doc/internals/en/packet-EOF_Packet.html
-    internal struct EOFPacket {
-        init?(data: Data) {
-            
-        }
-    }
-
-    // https://dev.mysql.com/doc/internals/en/packet-ERR_Packet.html
-    internal struct ERRPacket {
-        init?(data: Data) {
-            
+    internal struct EOFPacket { // NOTE: This type of packet is deprecated
+        let numberOfWarnings: Int
+        let status: StatusFlag
+        init?(data: Data, serverCapabilities: CapabilityFlag) {
+            var remaining = data
+            if serverCapabilities.contains(.clientProtocol41) {
+                self.numberOfWarnings = remaining.removingInt(of: 2)
+                self.status = StatusFlag(rawValue: UInt16(remaining.removingInt(of: 2) & 0xffff))
+            } else {
+                self.numberOfWarnings = 0
+                self.status = []
+            }
         }
     }
 }

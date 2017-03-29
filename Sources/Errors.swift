@@ -9,6 +9,7 @@
 import Foundation
 
 public extension MySQL {
+    // https://dev.mysql.com/doc/internals/en/packet-ERR_Packet.html
     public struct ServerError: Error, CustomStringConvertible {
         private struct Constants {
             static let standardMarker = "#"
@@ -33,9 +34,9 @@ public extension MySQL {
             return "[MySQL Error #\(code)] \(cp41Message)\(message)"
         }
 
-        public init(data: Data, capabilities: CapabilityFlag?) {
+        public init(data: Data, capabilities: CapabilityFlag) {
             var remaining = data
-            let serverCapabilities = capabilities ?? []
+            let serverCapabilities = capabilities
             self.code = remaining.removingInt(of: 2)
             if serverCapabilities.contains(.clientProtocol41) {
                 // TODO: (TL) ...
@@ -51,7 +52,7 @@ public extension MySQL {
             self.message = remaining.removingEOFEncodedString()
         }
 
-        private init(capabilities: CapabilityFlag?,
+        private init(capabilities: CapabilityFlag,
                      code: Int = Int.max,
                      marker: String = Constants.standardMarker,
                      state: String = Constants.unknownState,
@@ -63,11 +64,11 @@ public extension MySQL {
             self.message = message
         }
 
-        public static func unknown(with capabilities: CapabilityFlag? = []) -> ServerError {
+        public static func unknown(with capabilities: CapabilityFlag = []) -> ServerError {
             return ServerError(capabilities: capabilities)
         }
 
-        public static func emptyResponse(with capabilities: CapabilityFlag? = []) -> ServerError {
+        public static func emptyResponse(with capabilities: CapabilityFlag = []) -> ServerError {
             return ServerError(capabilities: capabilities,
                                code: Int.max - 1,
                                marker: Constants.standardMarker,
