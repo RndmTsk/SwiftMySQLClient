@@ -200,7 +200,7 @@ public extension MySQL {
             guard let responseFlag = data.first else {
                 throw ServerError.emptyResponse(with: capabilities)
             }
-            var remaining = data.subdata(in: 1..<data.count)
+            let remaining = data.subdata(in: 1..<data.count)
             if responseFlag == MySQL.Constants.ok
                 && data.count >= MySQL.Constants.okResponseMinLength {
                 let okPacket = OKPacket(data: remaining, serverCapabilities: capabilities)
@@ -209,12 +209,8 @@ public extension MySQL {
                 && data.count < MySQL.Constants.eofResponseMaxLength {
                 // Properly formatted EOF packet
                 print("[RESPONSE] EOF")
-                if capabilities.contains(.clientProtocol41) {
-                    let numberOfWarnings = remaining.removingInt(of: 2)
-                    let statusFlags = remaining.removingInt(of: 2)
-                    print("Number of warnings: \(numberOfWarnings)")
-                    print("Status Flags: \(statusFlags)")
-                }
+                let eofPacket = EOFPacket(data: remaining, serverCapabilities: capabilities)
+                print(eofPacket)
             } else if responseFlag == MySQL.Constants.err {
                 // Properly formatted error packet
                 throw ServerError(data: remaining, capabilities: capabilities)

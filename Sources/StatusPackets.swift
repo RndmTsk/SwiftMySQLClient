@@ -16,16 +16,13 @@ internal extension MySQL {
         let lastInsertID: Int
         let status: StatusFlag
         let info: String
-        let numberOfWarnings: Int?
+        let numberOfWarnings: Int
         let stateInfo: String?
 
         // MARK: - <CustomStringConvertible>
         var description: String {
             var response = "R: \(affectedRows), INS: \(lastInsertID), STATUS: \(status)"
-            if let numberOfWarnings = numberOfWarnings {
-                response.append(", WARN: \(numberOfWarnings)")
-            }
-            response.append(", INFO: \(info)")
+            response.append(", WARN: \(numberOfWarnings), INFO: \(info)")
             if let stateInfo = stateInfo {
                 response.append(", STATE: \(stateInfo)")
             }
@@ -49,7 +46,7 @@ internal extension MySQL {
                 } else {
                     status = []
                 }
-                self.numberOfWarnings = nil
+                self.numberOfWarnings = 0
             }
 
             if serverCapabilities.contains(.clientSessionTrack) {
@@ -70,10 +67,15 @@ internal extension MySQL {
     }
 
     // https://dev.mysql.com/doc/internals/en/packet-EOF_Packet.html
-    internal struct EOFPacket { // NOTE: This type of packet is deprecated
+    internal struct EOFPacket: CustomStringConvertible { // NOTE: This type of packet is deprecated
         let numberOfWarnings: Int
         let status: StatusFlag
-        init?(data: Data, serverCapabilities: CapabilityFlag) {
+
+        var description: String {
+            return "WARN: \(numberOfWarnings), STATUS: \(status)"
+        }
+
+        init(data: Data, serverCapabilities: CapabilityFlag) {
             var remaining = data
             if serverCapabilities.contains(.clientProtocol41) {
                 self.numberOfWarnings = remaining.removingInt(of: 2)
