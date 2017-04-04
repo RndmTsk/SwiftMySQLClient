@@ -8,35 +8,6 @@
 
 import Foundation
 
-/*
-4              capability flags, CLIENT_PROTOCOL_41 always set
-4              max-packet size
-1              character set
-string[23]     reserved (all [0])
-string[NUL]    username
-if capabilities & CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA {
-    lenenc-int     length of auth-response
-    string[n]      auth-response
-} else if capabilities & CLIENT_SECURE_CONNECTION {
-    1              length of auth-response
-    string[n]      auth-response
-} else {
-    string[NUL]    auth-response
-}
-if capabilities & CLIENT_CONNECT_WITH_DB {
-    string[NUL]    database
-}
-if capabilities & CLIENT_PLUGIN_AUTH {
-    string[NUL]    auth plugin name
-}
-if capabilities & CLIENT_CONNECT_ATTRS {
-    lenenc-int     length of all key-values
-    lenenc-str     key
-    lenenc-str     value
-    if-more data in 'length of all key-values', more keys and value pairs
-}
- */
-
 public extension MySQL {
     // https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::Handshake
     public struct HandshakeResponse {
@@ -63,18 +34,14 @@ public extension MySQL {
                 // Encrypted password (Length encoded prefix)
                 rawData.append(contentsOf: MySQL.lenenc(password.count))
                 rawData.append(contentsOf: password)
-                
-                print("clientPluginAuthLenencClientData")
             } else if handshake.capabilityFlags.contains(.clientSecureConnection) {
                 // Encrypted password (Length prefixed)
                 rawData.append(UInt8(password.count & 0xff))
                 rawData.append(contentsOf: password)
-                print("clientSecureConnection")
             } else {
                 // Encrypted password (NULL terminated)
                 rawData.append(contentsOf: password)
                 rawData.append(0)
-                print("none")
             }
             if handshake.capabilityFlags.contains(.clientConnectWithDB),
                 let database = configuration.database {
@@ -93,7 +60,7 @@ public extension MySQL {
                 // TODO: (TL) lenenc-int key-values.count
                 // TODO: (TL) lenenc-str key
                 // TODO: (TL) lenenc-str value
-                print("clientConnectAttrs")
+                // print("clientConnectAttrs")
             }
             self.data = Data(bytes: rawData)
         }

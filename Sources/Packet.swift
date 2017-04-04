@@ -15,13 +15,16 @@ internal extension MySQL {
             internal static let minLength = 4
         }
         internal let length: Int
-        internal let number: Int
+        internal let number: UInt8
         internal let body: Data
         internal var description: String {
-            return "#\(number) - Body: \(body) {L:\(length)}"
+            return "[#\(number)]{READ} \(length) bytes"
         }
 
         init(data: Data) throws {
+            guard data.count > 0 else {
+                throw PacketError.noData
+            }
             guard data.count > Constants.minLength else {
                 throw PacketError.incorrectHeaderLength
             }
@@ -32,10 +35,9 @@ internal extension MySQL {
             // Message length takes up the first 3 bytes
             self.length = length
             // Packet number is the 4th byte of the header
-            self.number = Int(data[3])
+            self.number = data[3]
             // Body is remaining data
             self.body = data.subdata(in: Constants.minLength..<data.count)
-            print("[READ  #\(number)] \(length) bytes")
         }
     }
 }

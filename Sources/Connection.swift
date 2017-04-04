@@ -100,6 +100,27 @@ public extension MySQL {
             try disconnect(from: socket)
             // TODO: (TL) Check other stuff like in transaction
         }
+
+        // MARK: - Issue Command
+        // TODO: (TL) Do we need more than one parameter? - seems like deprecated commands need this
+        public func issue(_ command: Command, with text: String? = nil) throws /* -> ResultSet */ {
+            // Sequence number resets for each command
+            sequenceNumber = 0
+
+            guard let socket = socket else {
+                throw ClientError.socketUnavailable
+            }
+            var bytes: [UInt8] = [command.rawValue]
+            if let text = text {
+                bytes.append(contentsOf: text.utf8)
+                bytes.append(MySQL.Constants.eof)
+            }
+            let data = Data(bytes: bytes)
+            try write(data, to: socket, false)
+            let response = try receive(from: socket)
+            // TODO: (TL) Verify sequence number
+            try parseCommandResponse(from: response.body, with: handshake?.capabilityFlags ?? [])
+        }
         
         // MARK: - Private Helper Functions
 
@@ -127,7 +148,7 @@ public extension MySQL {
             guard let handshake = Handshake(data: packet.body)  else {
                 throw ClientError.invalidHandshake
             }
-            print("Handshake received: \(handshake)")
+            print("    \(handshake)")
             self.handshake = handshake
             let handshakeResponse = HandshakeResponse(handshake: handshake, configuration: configuration)
 
@@ -145,10 +166,17 @@ public extension MySQL {
          - throws: Any socket error encountered during the disconnect process.
          */
         private func disconnect(from socket: Socket) throws {
-            // TODO: (TL) Pieces missing
-            // try write(packet: MySQL.Command.quit)
-            // try socket.close()
             state = .disconnecting
+            do {
+                try issue(.quit)
+            } catch where error is PacketError {
+                // COM_QUIT can either be EOF _or_ 0 length
+                if error as! PacketError != PacketError.noData {
+                    throw error
+                }
+            }
+            socket.close()
+            state = .disconnected
         }
 
         /**
@@ -163,7 +191,16 @@ public extension MySQL {
             _ = try socket.read(into: &data)
             // TODO: (TL) Add logging of bytes read in DEBUG MODE
             // TODO: (TL) see if we need to read more
-            return try Packet(data: data)
+            let packet = try Packet(data: data)
+            print(packet)
+            if sequenceNumber > 0 {
+                guard packet.number == sequenceNumber + 1 else {
+                    try parseCommandResponse(from: packet.body, with: handshake?.capabilityFlags ?? [])
+                    throw ServerError.invalidSequenceNumber(with: handshake?.capabilityFlags ?? [])
+                }
+            }
+            sequenceNumber = packet.number
+            return packet
         }
 
         /**
@@ -173,9 +210,11 @@ public extension MySQL {
          - parameter socket: The socket object previously created.
          - throws: Any socket error encountered during the write process.
          */
-        private func write(_ data: Data, to socket: Socket) throws {
+        private func write(_ data: Data, to socket: Socket, _ incrementSequenceNumber: Bool = true) throws {
+            if incrementSequenceNumber {
+                sequenceNumber = (sequenceNumber + 1) % UInt8.max
+            }
             // TODO: (TL) This needs to be accounted for by what we've received from the server as well.
-            sequenceNumber = (sequenceNumber + 1) % UInt8.max
             let encodedLength = MySQL.lsbEncoded(data.count, to: 3)
 
             // Construct the packet:
@@ -187,7 +226,7 @@ public extension MySQL {
             packetData.append(data)
             try socket.write(from: packetData)
             // TODO: (TL) Add logging of bytes read in DEBUG MODE
-            print("[WRITE #\(sequenceNumber)] \(data.count) bytes")
+            print("[#\(sequenceNumber)]{WRITE} \(data.count) bytes")
         }
 
         /**
@@ -204,11 +243,11 @@ public extension MySQL {
             if responseFlag == MySQL.Constants.ok
                 && data.count >= MySQL.Constants.okResponseMinLength {
                 let okPacket = OKPacket(data: remaining, serverCapabilities: capabilities)
-                print("[RESPONSE - OK] \(okPacket)")
+                print("    [RESPONSE - OK] \(okPacket)")
             } else if responseFlag == MySQL.Constants.eof
                 && data.count < MySQL.Constants.eofResponseMaxLength {
                 // Properly formatted EOF packet
-                print("[RESPONSE] EOF")
+                print("    [RESPONSE] EOF")
                 let eofPacket = EOFPacket(data: remaining, serverCapabilities: capabilities)
                 print(eofPacket)
             } else if responseFlag == MySQL.Constants.err {

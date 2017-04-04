@@ -22,7 +22,7 @@ internal extension MySQL {
         // MARK: - <CustomStringConvertible>
         var description: String {
             var response = "R: \(affectedRows), INS: \(lastInsertID), STATUS: \(status)"
-            response.append(", WARN: \(numberOfWarnings), INFO: \(info)")
+            response.append(", WARN: \(numberOfWarnings), INFO: \(info).")
             if let stateInfo = stateInfo {
                 response.append(", STATE: \(stateInfo)")
             }

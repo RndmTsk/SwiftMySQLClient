@@ -8,6 +8,8 @@ class MySQLClientTests: XCTestCase {
         let connection = MySQL.Connection(configuration: configuration)
         do {
             try connection.open()
+            // try connection.issue(.stmtExecute, "")
+            try connection.close()
         } catch {
             XCTFail("Encountered error: \(error)")
             return

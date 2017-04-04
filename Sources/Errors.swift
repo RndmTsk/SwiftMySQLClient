@@ -17,6 +17,8 @@ public extension MySQL {
             static let emtpyMessage = "Response length was zero, no data was received."
             static let unknownState = "00001"
             static let unknownMessage = "An unknown error occurred attempting to receive data from the server."
+            static let invalidSequenceNumberState = "00002"
+            static let invalidSequenceNumberMessage = "Received a packet out of order."
         }
 
         public let code: Int
@@ -75,6 +77,14 @@ public extension MySQL {
                                state: Constants.emptyResponseState,
                                message: Constants.emtpyMessage)
         }
+
+        public static func invalidSequenceNumber(with capabilities: CapabilityFlag = []) -> ServerError {
+            return ServerError(capabilities: capabilities,
+                               code: Int.max - 2,
+                               marker: Constants.standardMarker,
+                               state: Constants.invalidSequenceNumberState,
+                               message: Constants.invalidSequenceNumberMessage)
+        }
     }
 
     public enum ClientError: Error {
@@ -83,6 +93,7 @@ public extension MySQL {
     }
 
     public enum PacketError: Error {
+        case noData
         case incorrectHeaderLength
         case incorrectBodyLength
     }
