@@ -4,11 +4,12 @@ import XCTest
 class MySQLClientTests: XCTestCase {
     func testConnect() {
         let credentials = URLCredential(user: "snack", password: "snack", persistence: .none)
-        let configuration = MySQL.ClientConfiguration(host: "localhost", credentials: credentials)
+        let configuration = MySQL.ClientConfiguration(host: "localhost", database: "snacktracker", credentials: credentials)
         let connection = MySQL.Connection(configuration: configuration)
         do {
             try connection.open()
-            // try connection.issue(.stmtExecute, "")
+            // try connection.issue(.query, with: "SELECT @@version_comment")
+            try connection.issue(.query, with: "SELECT * FROM snack")
             try connection.close()
         } catch {
             XCTFail("Encountered error: \(error)")

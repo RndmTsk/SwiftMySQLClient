@@ -104,6 +104,7 @@ public extension MySQL {
         // MARK: - Issue Command
         // TODO: (TL) Do we need more than one parameter? - seems like deprecated commands need this
         public func issue(_ command: Command, with text: String? = nil) throws /* -> ResultSet */ {
+            // https://dev.mysql.com/doc/internals/en/sequence-id.html
             // Sequence number resets for each command
             sequenceNumber = 0
 
@@ -113,7 +114,7 @@ public extension MySQL {
             var bytes: [UInt8] = [command.rawValue]
             if let text = text {
                 bytes.append(contentsOf: text.utf8)
-                bytes.append(MySQL.Constants.eof)
+                bytes.append(0)
             }
             let data = Data(bytes: bytes)
             try write(data, to: socket, false)
@@ -200,6 +201,24 @@ public extension MySQL {
                 }
             }
             sequenceNumber = packet.number
+
+            // TODO: (TL) WIP -- determine packet type
+            if packet.length < data.count { // TODO: (TL) Result Set?
+                // Parse column info packet
+                let nextPacket = try Packet(data: data.subdata(in: packet.length..<data.count))
+                let numberOfColumns = packet.body[0]
+                let startIndex = packet.length + nextPacket.length
+                var columnPacketData = data.subdata(in: startIndex..<data.count)
+                var columnPackets = [ColumnPacket]()
+                print("Found \(packet.body[0]) columns")
+                for _ in 0..<numberOfColumns {
+                    let nextPacket = try Packet(data: columnPacketData)
+                    let columnPacket = ColumnPacket(data: nextPacket.body)
+                    columnPackets.append(columnPacket)
+                    columnPacketData = columnPacketData.subdata(in: nextPacket.length..<columnPacketData.count)
+                }
+            }
+            // TODO: (TL) ...
             return packet
         }
 

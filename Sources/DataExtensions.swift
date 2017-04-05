@@ -28,7 +28,8 @@ public extension Data {
     }
 
     public func eofEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> String {
-        return encodedString(at: offset, terminator: MySQL.Constants.eof)
+        let stringStart = startIndex.advanced(by: offset)
+        return String(data: subdata(in: stringStart..<count), encoding: encoding) ?? ""
     }
 
     public func removeEOFEncodedString(at offset: Int = 0, with encoding: String.Encoding = .utf8) -> (value: String, remaining: Data) {

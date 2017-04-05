@@ -11,7 +11,7 @@ import XCTest
 
 class DataExtensionTests: XCTestCase {
     static let testBytes: [UInt8] = [
-        56, 46, 48, 46, 48, 45, 100, 109, 114, 0, 56, MySQL.Constants.eof
+        56, 46, 48, 46, 48, 45, 100, 109, 114, 0, 56
         // 8.0.0-dmr = \0 terminated
         // 8.0.0-dmr\08 = EOF terminated
     ]
@@ -154,7 +154,7 @@ class DataExtensionTests: XCTestCase {
             XCTFail("Expected: \(DataExtensionTests.expectedEOFEncodedString), received: \(string).")
             return
         }
-        let expectedRemainingBytes = data.count - string.utf8.count - 1 // EOF terminator
+        let expectedRemainingBytes = data.count - string.utf8.count
         if remaining.count != expectedRemainingBytes {
             XCTFail("Length of remaining data is incorrect, expected: \(expectedRemainingBytes), received: \(remaining.count)")
             return
@@ -175,7 +175,7 @@ class DataExtensionTests: XCTestCase {
             XCTFail("Expected: \(DataExtensionTests.expectedEOFEncodedString), received: \(string).")
             return
         }
-        let expectedRemainingBytes = data.count - string.utf8.count - 1 // EOF terminator
+        let expectedRemainingBytes = data.count - string.utf8.count
         if mutableData.count != expectedRemainingBytes {
             XCTFail("Length of remaining data is incorrect, expected: \(expectedRemainingBytes), received: \(mutableData.count)")
             return
@@ -206,7 +206,7 @@ class DataExtensionTests: XCTestCase {
             XCTFail("Expected: \(DataExtensionTests.expectedEOFEncodedSubstring), received: \(string).")
             return
         }
-        let expectedRemainingBytes = data.count - DataExtensionTests.substringOffset - string.utf8.count - 1 // EOF terminator
+        let expectedRemainingBytes = data.count - DataExtensionTests.substringOffset - string.utf8.count
         if remaining.count != expectedRemainingBytes {
             XCTFail("Length of remaining data is incorrect, expected: \(expectedRemainingBytes), received: \(remaining.count)")
             return
@@ -227,7 +227,7 @@ class DataExtensionTests: XCTestCase {
             XCTFail("Expected: \(DataExtensionTests.expectedEOFEncodedSubstring), received: \(string).")
             return
         }
-        let expectedRemainingBytes = data.count - DataExtensionTests.substringOffset - string.utf8.count - 1 // EOF terminator
+        let expectedRemainingBytes = data.count - DataExtensionTests.substringOffset - string.utf8.count
         if mutableData.count != expectedRemainingBytes {
             XCTFail("Length of remaining data is incorrect, expected: \(expectedRemainingBytes), received: \(mutableData.count)")
             return

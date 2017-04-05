@@ -50,7 +50,7 @@ class PacketTests: XCTestCase {
                                     0,
                                     MySQL.Command.quit.rawValue])
             let packet = try MySQL.Packet(data: data)
-            guard packet.length == 1, packet.number == 0, packet.body[0] == MySQL.Command.quit.rawValue else {
+            guard packet.length == 5, packet.number == 0, packet.body[0] == MySQL.Command.quit.rawValue else {
                 XCTFail("Packet not parsed correctly, expected: Length: 1, Number: 0, Body: 1, got: \(packet)")
                 return
             }

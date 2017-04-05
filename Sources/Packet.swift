@@ -12,7 +12,7 @@ internal extension MySQL {
     // https://dev.mysql.com/doc/internals/en/mysql-packet.html
     internal struct Packet: CustomStringConvertible {
         internal final class Constants {
-            internal static let minLength = 4
+            internal static let headerLength = 4
         }
         internal let length: Int
         internal let number: UInt8
@@ -25,19 +25,19 @@ internal extension MySQL {
             guard data.count > 0 else {
                 throw PacketError.noData
             }
-            guard data.count > Constants.minLength else {
+            guard data.count > Constants.headerLength else {
                 throw PacketError.incorrectHeaderLength
             }
             let length = data.int(of: 3)
-            guard (data.count - Constants.minLength) == length else {
+            guard data.count - Constants.headerLength >= length else {
                 throw PacketError.incorrectBodyLength
             }
             // Message length takes up the first 3 bytes
-            self.length = length
+            self.length = length + Constants.headerLength
             // Packet number is the 4th byte of the header
             self.number = data[3]
             // Body is remaining data
-            self.body = data.subdata(in: Constants.minLength..<data.count)
+            self.body = data.subdata(in: Constants.headerLength..<Constants.headerLength + length)
         }
     }
 }
