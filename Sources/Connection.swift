@@ -205,10 +205,8 @@ public extension MySQL {
             // TODO: (TL) WIP -- determine packet type
             if packet.length < data.count { // TODO: (TL) Result Set?
                 // Parse column info packet
-                let nextPacket = try Packet(data: data.subdata(in: packet.length..<data.count))
                 let numberOfColumns = packet.body[0]
-                let startIndex = packet.length + nextPacket.length
-                var columnPacketData = data.subdata(in: startIndex..<data.count)
+                var columnPacketData = data.subdata(in: packet.length..<data.count)
                 var columnPackets = [ColumnPacket]()
                 print("Found \(packet.body[0]) columns")
                 for _ in 0..<numberOfColumns {
