@@ -14,11 +14,15 @@ internal extension MySQL {
         internal final class Constants {
             internal static let headerLength = 4
         }
-        internal let length: Int
         internal let number: UInt8
+        internal let length: Int
+        internal var totalLength: Int {
+            return length + Constants.headerLength
+        }
         internal let body: Data
+
         internal var description: String {
-            return "[#\(number)]{READ} \(length) bytes"
+            return "[#\(number)]{READ} \(totalLength) bytes"
         }
 
         init(data: Data) throws {
@@ -33,7 +37,7 @@ internal extension MySQL {
                 throw PacketError.incorrectBodyLength
             }
             // Message length takes up the first 3 bytes
-            self.length = length + Constants.headerLength
+            self.length = length
             // Packet number is the 4th byte of the header
             self.number = data[3]
             // Body is remaining data

@@ -13,12 +13,14 @@ public extension MySQL {
     public struct ServerError: Error, CustomStringConvertible {
         private struct Constants {
             static let standardMarker = "#"
-            static let emptyResponseState = "00000"
+            static let emptyResponse = 0
             static let emtpyMessage = "Response length was zero, no data was received."
-            static let unknownState = "00001"
+            static let unknown = 1
             static let unknownMessage = "An unknown error occurred attempting to receive data from the server."
-            static let invalidSequenceNumberState = "00002"
+            static let invalidSequenceNumber = 2
             static let invalidSequenceNumberMessage = "Received a packet out of order."
+            static let malformedCommand = 3
+            static let malformedCommandMessage = "Command response packet was malformed."
         }
 
         public let code: Int
@@ -55,9 +57,9 @@ public extension MySQL {
         }
 
         private init(capabilities: CapabilityFlag,
-                     code: Int = Int.max,
+                     code: Int = Constants.unknown,
                      marker: String = Constants.standardMarker,
-                     state: String = Constants.unknownState,
+                     state: String = String(Constants.unknown),
                      message: String = Constants.unknownMessage) {
             // TODO: (TL) Not using capabilities
             self.code = code
@@ -72,24 +74,34 @@ public extension MySQL {
 
         public static func emptyResponse(with capabilities: CapabilityFlag = []) -> ServerError {
             return ServerError(capabilities: capabilities,
-                               code: Int.max - 1,
+                               code: Constants.emptyResponse,
                                marker: Constants.standardMarker,
-                               state: Constants.emptyResponseState,
+                               state: String(Constants.emptyResponse),
                                message: Constants.emtpyMessage)
         }
 
         public static func invalidSequenceNumber(with capabilities: CapabilityFlag = []) -> ServerError {
             return ServerError(capabilities: capabilities,
-                               code: Int.max - 2,
+                               code: Constants.invalidSequenceNumber,
                                marker: Constants.standardMarker,
-                               state: Constants.invalidSequenceNumberState,
+                               state: String(Constants.invalidSequenceNumber),
                                message: Constants.invalidSequenceNumberMessage)
+        }
+
+        public static func malformedCommandResponse(with capabilities: CapabilityFlag = []) -> ServerError {
+            return ServerError(capabilities: capabilities,
+                               code: Constants.malformedCommand,
+                               marker: Constants.standardMarker,
+                               state: String(Constants.malformedCommand),
+                               message: Constants.malformedCommandMessage)
         }
     }
 
     public enum ClientError: Error {
         case socketUnavailable
         case invalidHandshake
+        case receivedNoResponse
+        case receivedExtraPackets
     }
 
     public enum PacketError: Error {

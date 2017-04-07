@@ -118,9 +118,33 @@ public extension MySQL {
             }
             let data = Data(bytes: bytes)
             try write(data, to: socket, false)
-            let response = try receive(from: socket)
+            let packets = try receive(from: socket)
+            let packetCount = packets.count
+            guard let commandResponsePacket = packets.first else {
+                throw ClientError.receivedNoResponse
+            }
+            if packetCount == 1 {
+                // This is it, figure out the response
+                // TODO: (TL) ...
+            } else { // Figure out how many columns were impacted
+                guard let columnCountData = commandResponsePacket.body.first else {
+                    throw ServerError.malformedCommandResponse(with: handshake?.capabilityFlags ?? [])
+                }
+                let columnCount = Int(columnCountData)
+                guard packetCount > columnCount else {
+                    throw ServerError.malformedCommandResponse(with: handshake?.capabilityFlags ?? []) // TODO: (TL) Just get more data instead?
+                }
+                print("    \(columnCount) columns.")
+                let columnPackets = packets[1..<columnCount+1].flatMap {
+                    ($0.body, command)
+                }.map(ColumnPacket.init)
+                // TODO: (TL) do stuff with columnPackets ...
+                let commandPacket = EOFPacket(data: packets.last!.body.subdata(in: 1..<packets.last!.body.count), serverCapabilities: handshake?.capabilityFlags ?? [])
+                print(commandPacket)
+            }
+
             // TODO: (TL) Verify sequence number
-            try parseCommandResponse(from: response.body, with: handshake?.capabilityFlags ?? [])
+//            try parseCommandResponse(from: response.body, with: handshake?.capabilityFlags ?? [])
         }
         
         // MARK: - Private Helper Functions
@@ -144,9 +168,12 @@ public extension MySQL {
          */
         private func authorize(_ socket: Socket) throws {
             state = .authorizing
-            let packet = try receive(from: socket)
+            var packets = try receive(from: socket)
+            guard let handshakePacket = packets.first, packets.count == 1 else {
+                throw ClientError.receivedExtraPackets // TODO: (TL) is this actually an error??
+            }
             // TODO: (TL) Check packet type
-            guard let handshake = Handshake(data: packet.body)  else {
+            guard let handshake = Handshake(data: handshakePacket.body)  else {
                 throw ClientError.invalidHandshake
             }
             print("    \(handshake)")
@@ -154,10 +181,12 @@ public extension MySQL {
             let handshakeResponse = HandshakeResponse(handshake: handshake, configuration: configuration)
 
             try write(handshakeResponse.data, to: socket)
-
-            let response = try receive(from: socket)
+            packets = try receive(from: socket)
             // TODO: (TL) Verify sequence number
-            try parseCommandResponse(from: response.body, with: handshake.capabilityFlags)
+            guard let commandPacket = packets.first, packets.count == 1 else {
+                throw ClientError.receivedExtraPackets
+            }
+            try parseCommandResponse(from: commandPacket.body, with: handshake.capabilityFlags)
         }
 
         /**
@@ -187,9 +216,11 @@ public extension MySQL {
          - returns: A `Packet` object if successfully parsed.
          - throws: Any socket error encountered during the read process, any packet creation error if invalid data is received.
          */
-        private func receive(from socket: Socket) throws -> Packet {
+        private func receive(from socket: Socket) throws -> [Packet] {
             var data = Data(capacity: Constants.headerSize)
             _ = try socket.read(into: &data)
+            return try chunk(data)
+/*
             // TODO: (TL) Add logging of bytes read in DEBUG MODE
             // TODO: (TL) see if we need to read more
             let packet = try Packet(data: data)
@@ -218,6 +249,19 @@ public extension MySQL {
             }
             // TODO: (TL) ...
             return packet
+ */
+        }
+
+        private func chunk(_ data: Data) throws -> [Packet] {
+            var packets = [Packet]()
+            var remaining = data
+            repeat {
+                let packet = try Packet(data: remaining)
+                packets.append(packet)
+                remaining.droppingFirst(packet.totalLength)
+            } while remaining.count > 0
+            print("--- PARSED \(packets.count) PACKETS -> \(remaining.count) bytes leftover ---")
+            return packets
         }
 
         /**
