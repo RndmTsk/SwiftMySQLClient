@@ -13,7 +13,7 @@ public extension MySQL {
     // https://dev.mysql.com/doc/internals/en/capability-flags.html#packet-Protocol::CapabilityFlag
 
     /// A structure representing the various capabilities supported by the client or server.
-    public struct CapabilityFlag: OptionSet {
+    public struct CapabilityFlag: OptionSet, CustomStringConvertible {
         // MARK: - Convenience Constants
         public static let clientLongPassword              = CapabilityFlag(rawValue: 0x00000001)
         public static let clientFoundRows                 = CapabilityFlag(rawValue: 0x00000002)
@@ -45,6 +45,63 @@ public extension MySQL {
 
         /// The raw `UInt32` value of the flags.
         public let rawValue: UInt32
+
+        public var description: String {
+            var capabilityStrings = [String]()
+            if contains(.clientLongPassword) {
+                capabilityStrings.append("Long Password")
+            }
+            if contains(.clientFoundRows) {
+                capabilityStrings.append("Found Rows")
+            }
+            if contains(.clientLongFlag) {
+                capabilityStrings.append("Long Flag")
+            }
+            if contains(.clientConnectWithDB) {
+                capabilityStrings.append("Connect with Database")
+            }
+            if contains(.clientNoSchema) {
+                capabilityStrings.append("No Schema")
+            }
+            if contains(.clientCompress) {
+                capabilityStrings.append("Compress")
+            }
+            if contains(.clientODBC) {
+                capabilityStrings.append("ODBC")
+            }
+            if contains(.clientLocalFiles) {
+                capabilityStrings.append("Local Files")
+            }
+            if contains(.clientIgnoreSpace) {
+                capabilityStrings.append("Ignore Space")
+            }
+            if contains(.clientProtocol41) {
+                capabilityStrings.append("Client Protocol 41")
+            }
+            if contains(.clientInteractive) {
+                capabilityStrings.append("Interactive")
+            }
+            if contains(.clientSSL) {
+                capabilityStrings.append("SSL")
+            }
+            if contains(.clientIgnoreSigpipe) {
+                capabilityStrings.append("Ignore Sigpipe")
+            }
+            if contains(.clientTransactions) {
+                capabilityStrings.append("Transactions")
+            }
+            if contains(.clientReserved) {
+                capabilityStrings.append("Reserved - ERROR")
+            }
+            if contains(.clientSecureConnection) {
+                capabilityStrings.append("Secure Connection")
+            }
+            var desc = "Capabilities:"
+            for string in capabilityStrings {
+                desc.append("\n    - \(string)")
+            }
+            return desc
+        }
 
         // MARK: - Lifecycle Functions
 
