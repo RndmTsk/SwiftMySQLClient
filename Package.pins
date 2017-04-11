@@ -1,0 +1,24 @@
+{
+  "autoPin": true,
+  "pins": [
+    {
+      "package": "CryptoSwift",
+      "reason": null,
+      "repositoryURL": "https://github.com/krzyzanowskim/CryptoSwift.git",
+      "version": "0.6.8"
+    },
+    {
+      "package": "Result",
+      "reason": null,
+      "repositoryURL": "https://github.com/antitypical/Result.git",
+      "version": "3.2.1"
+    },
+    {
+      "package": "Socket",
+      "reason": null,
+      "repositoryURL": "https://github.com/IBM-Swift/BlueSocket.git",
+      "version": "0.12.44"
+    }
+  ],
+  "version": 1
+}
