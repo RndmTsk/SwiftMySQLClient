@@ -103,6 +103,17 @@ public extension MySQL {
 
         // MARK: - Issue Command
         // TODO: (TL) Do we need more than one parameter? - seems like deprecated commands need this
+        /*
+        14.6.4.1.1.3 Text Resultset Row
+        
+        ProtocolText::ResultsetRow:
+        A row with the data for each column.
+        
+        NULL is sent as 0xfb
+        
+        everything else is converted into a string and is sent as Protocol::LengthEncodedString.
+        */
+        
         public func issue(_ command: Command, with text: String? = nil) throws /* -> ResultSet */ {
             // https://dev.mysql.com/doc/internals/en/sequence-id.html
             // Sequence number resets for each command

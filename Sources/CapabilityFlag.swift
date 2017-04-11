@@ -46,6 +46,7 @@ public extension MySQL {
         /// The raw `UInt32` value of the flags.
         public let rawValue: UInt32
 
+        /// A string describing the flags that are set
         public var description: String {
             var capabilityStrings = [String]()
             if contains(.clientLongPassword) {
@@ -96,9 +97,36 @@ public extension MySQL {
             if contains(.clientSecureConnection) {
                 capabilityStrings.append("Secure Connection")
             }
-            var desc = "Capabilities:"
+            if contains(.clientMultiStatements) {
+                capabilityStrings.append("Multi Statements")
+            }
+            if contains(.clientMultiResults) {
+                capabilityStrings.append("Multi Results")
+            }
+            if contains(.clientPSMultiResults) {
+                capabilityStrings.append("PS Multi Results")
+            }
+            if contains(.clientPluginAuth) {
+                capabilityStrings.append("Plugin: AUTH")
+            }
+            if contains(.clientConnectAttrs) {
+                capabilityStrings.append("Connection Attributes")
+            }
+            if contains(.clientPluginAuthLenecClientData) {
+                capabilityStrings.append("Plugin: AUTH Length Encoded Client Data")
+            }
+            if contains(.clientCanHandleExpiredPasswords) {
+                capabilityStrings.append("Can Handle Expired Passwords")
+            }
+            if contains(.clientSessionTrack) {
+                capabilityStrings.append("Session Tracking")
+            }
+            if contains(.clientDeprecateEOF) {
+                capabilityStrings.append("Deprecate EOF")
+            }
+            var desc = "Capabilities: \(rawValue)"
             for string in capabilityStrings {
-                desc.append("\n    - \(string)")
+                desc.append("\n    -- \(string)")
             }
             return desc
         }

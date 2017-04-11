@@ -7,15 +7,14 @@
 //
 
 import Foundation
-
+/* TODO: (TL) ..
+if contains(<#FLAG#>) {
+    <#ARRAY#>.append("<#STRING#>")
+}
+ */
 public extension MySQL {
     public struct FieldFlag: OptionSet {
-        public let rawValue: UInt16
-        public init(rawValue: UInt16) {
-            self.rawValue = rawValue
-        }
-
-        // TODO: (TL) Reference?
+        // MARK: - Convenience Constants
         public static let notNull       = FieldFlag(rawValue: 0x0001)
         public static let priKey        = FieldFlag(rawValue: 0x0002)
         public static let uniqueKey     = FieldFlag(rawValue: 0x0004)
@@ -28,5 +27,14 @@ public extension MySQL {
         public static let autoIncrement = FieldFlag(rawValue: 0x0200)
         public static let timestamp     = FieldFlag(rawValue: 0x0400)
         public static let set           = FieldFlag(rawValue: 0x0800)
+
+        // MARK: - Properties
+
+        public let rawValue: UInt16
+
+        // MARK: - Lifecycle Functions
+        public init(rawValue: UInt16) {
+            self.rawValue = rawValue
+        }
     }
 }

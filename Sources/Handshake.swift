@@ -26,9 +26,9 @@ internal extension MySQL {
             let detailStrings = [
                 "MySQL Version: \(serverVersion)",
                 "Connection #: \(connectionID)",
-                "Server Capabilities: \(capabilityFlags)",
+                "\(capabilityFlags)",
                 "Character Set: \(characterset)",
-                "Server Status: \(statusFlags)",
+                "\(statusFlags)",
                 "AUTH Plugin: \(authPluginName)"
             ]
             for string in detailStrings { // TODO: (TL) Use reduce instead?
