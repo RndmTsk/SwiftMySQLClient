@@ -134,6 +134,12 @@ public extension MySQL {
             guard let commandResponsePacket = packets.first else {
                 throw ClientError.receivedNoResponse
             }
+
+            // 1. Verify how many packets were received
+            // 2. if > 1 => 1..<ColCount+1 = column definitions, ColCount+1..<N = rows
+            // 3. map column definitions
+            // 4. Check for EOF (if supported)
+            // 5. parse rows until EOF packet
             if packetCount == 1 {
                 // This is it, figure out the response
                 // TODO: (TL) ...
@@ -221,7 +227,8 @@ public extension MySQL {
             guard let commandPacket = packets.first, packets.count == 1 else {
                 throw ClientError.receivedExtraPackets
             }
-            try parseCommandResponse(from: commandPacket.body, with: handshake.capabilityFlags)
+            _ = try parseCommandResponse(from: commandPacket.body, with: handshake.capabilityFlags)
+            // TODO: (TL) ...
         }
 
         /**
@@ -304,21 +311,18 @@ public extension MySQL {
          - parameter data: The raw data received from the socket.
          - throws: Any errors encountered in constructing the packet response, any errors parsed from the server.
          */
-        private func parseCommandResponse(from data: Data, with capabilities: CapabilityFlag) throws {
+        private func parseCommandResponse(from data: Data, with capabilities: CapabilityFlag) throws -> CommandPacket {
             guard let responseFlag = data.first else {
                 throw ServerError.emptyResponse(with: capabilities)
             }
             let remaining = data.subdata(in: 1..<data.count)
             if responseFlag == MySQL.Constants.ok
                 && data.count >= MySQL.Constants.okResponseMinLength {
-                let okPacket = OKPacket(data: remaining, serverCapabilities: capabilities)
-                print("    [RESPONSE - OK] \(okPacket)")
+                return OKPacket(data: remaining, serverCapabilities: capabilities)
             } else if responseFlag == MySQL.Constants.eof
                 && data.count < MySQL.Constants.eofResponseMaxLength {
                 // Properly formatted EOF packet
-                print("    [RESPONSE] EOF")
-                let eofPacket = EOFPacket(data: remaining, serverCapabilities: capabilities)
-                print(eofPacket)
+                return EOFPacket(data: remaining, serverCapabilities: capabilities)
             } else if responseFlag == MySQL.Constants.err {
                 // Properly formatted error packet
                 throw ServerError(data: remaining, capabilities: capabilities)

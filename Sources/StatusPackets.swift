@@ -10,8 +10,10 @@ import Foundation
 
 internal extension MySQL {
     // https://dev.mysql.com/doc/internals/en/packet-OK_Packet.html
-    internal struct OKPacket: CustomStringConvertible {
+    internal struct OKPacket: CommandPacket, CustomStringConvertible {
         // MARK: - Properties
+        let packetType: CommandPacketType = .ok
+        let length: Int
         let affectedRows: Int
         let lastInsertID: Int
         let status: StatusFlag
@@ -63,11 +65,15 @@ internal extension MySQL {
                 self.stateInfo = nil
             }
             self.status = status
+            self.length = data.count + 1 // + the byte missing to indicate packet type
         }
     }
 
     // https://dev.mysql.com/doc/internals/en/packet-EOF_Packet.html
-    internal struct EOFPacket: CustomStringConvertible { // NOTE: This type of packet is deprecated
+    internal struct EOFPacket: CommandPacket, CustomStringConvertible {
+        // NOTE: This type of packet is deprecated
+        let packetType: CommandPacketType = .eof
+        let length: Int
         let numberOfWarnings: Int
         let status: StatusFlag
 
@@ -84,6 +90,7 @@ internal extension MySQL {
                 self.numberOfWarnings = 0
                 self.status = []
             }
+            self.length = data.count + 1 // + the byte missing to indicate packet type
         }
     }
 }
