@@ -29,7 +29,6 @@ extension MySQL {
         }
 
         init(data: Data, command: Command) {
-            print(">>>COLUMN PACKET<<<")
             var remaining = data
             // Catalog
             let catalogLength = remaining.removingLenencInt()
@@ -83,8 +82,6 @@ extension MySQL {
              */
             print("IN: \(data.count), LEFTOVER: \(remaining.count)")
             self.length = data.count - remaining.count
-            print(self)
-            print(">>>COLUMN PACKET<<<")
         }
     }
 }

@@ -149,13 +149,33 @@ public extension MySQL {
                 let columnPackets = packets[1..<columnCount+1].flatMap {
                     ($0.body, command)
                 }.map(ColumnPacket.init)
-                // TODO: (TL) do stuff with columnPackets ...
-                let commandPacket = EOFPacket(data: packets.last!.body.subdata(in: 1..<packets.last!.body.count), serverCapabilities: handshake?.capabilityFlags ?? [])
-                print(commandPacket)
-                if commandPacket.status.contains(.moreResultsExists) {
-                    let rowData = try receive(from: socket)
-                    print(rowData)
+                print(columnPackets)
+                if !configuration.capabilities.contains(.clientDeprecateEOF) {
+                    // EOF Packet in the middle
+                    let packet = packets[columnCount+1]
+                    let commandPacket = EOFPacket(data: packet.body.subdata(in: 1..<packet.body.count), serverCapabilities: handshake?.capabilityFlags ?? [])
+                    // TODO: (TL) ...
                 }
+                for packet in packets[columnCount+1..<packets.count] {
+                    var remaining = packet.body
+                    var index = 0
+                    repeat {
+                        if remaining[0] == MySQL.Constants.eof {
+                            let commandPacket = EOFPacket(data: remaining.subdata(in: 1..<remaining.count), serverCapabilities: handshake?.capabilityFlags ?? [])
+                            remaining.droppingFirst(7) // TODO: (TL) commandPacket.length
+                        } else if remaining[0] == 0xfb {
+                            remaining.droppingFirst()
+                            print("\(columnPackets[index].columnName): NULL")
+                        } else {
+                            let length = remaining.removingLenencInt()
+                            let data = remaining.removingString(of: length)
+                            print("\(columnPackets[index].columnName): \(data)")
+                        }
+                        index += 1
+                    } while remaining.count > 0
+                }
+                // TODO: (TL) EOF packet maybe?
+                // TODO: (TL) do stuff with columnPackets ...
             }
 
             // TODO: (TL) Verify sequence number
