@@ -141,6 +141,10 @@ public extension MySQL {
                 // TODO: (TL) do stuff with columnPackets ...
                 let commandPacket = EOFPacket(data: packets.last!.body.subdata(in: 1..<packets.last!.body.count), serverCapabilities: handshake?.capabilityFlags ?? [])
                 print(commandPacket)
+                if commandPacket.status.contains(.moreResultsExists) {
+                    let rowData = try receive(from: socket)
+                    print(rowData)
+                }
             }
 
             // TODO: (TL) Verify sequence number
