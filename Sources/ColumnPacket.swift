@@ -19,13 +19,13 @@ extension MySQL {
         public let originalColumnName: String
         public let characterSet: Int
         public let columnLength: Int
-        public let dataType: Int
+        public let columnType: ColumnType
         public let flags: Int // TODO: (TL) Map to one of our OptionSets
         public let decimals: Int
         public let length: Int
 
         public var description: String {
-            return "CATALOG: \(catalog)\nSCHEMA: \(schema)\nTABLE: \(table)\nORIGINAL TABLE: \(originalTable)\nCOLUMN NAME: \(columnName)\nORIGINAL COLUMN NAME: \(originalColumnName)\nCHARACTER SET: \(characterSet)\nCOLUMN LENGTH: \(columnLength)\nDATA TYPE: \(dataType)\nFLAGS: \(flags)\nDECIMALS: \(decimals)\nLENGTH: \(length)"
+            return "CATALOG: \(catalog)\nSCHEMA: \(schema)\nTABLE: \(table)\nORIGINAL TABLE: \(originalTable)\nCOLUMN NAME: \(columnName)\nORIGINAL COLUMN NAME: \(originalColumnName)\nCHARACTER SET: \(characterSet)\nCOLUMN LENGTH: \(columnLength)\nDATA TYPE: \(columnType)\nFLAGS: \(flags)\nDECIMALS: \(decimals)\nLENGTH: \(length)"
         }
 
         init(data: Data, command: Command) {
@@ -64,8 +64,8 @@ extension MySQL {
             // Column Length - TODO: (TL) ??
             self.columnLength = remaining.removingInt(of: 4)
 
-            // Type ??
-            self.dataType = remaining.removingInt(of: 1)
+            // Column Type
+            self.columnType = ColumnType(rawValue: UInt8(remaining.removingInt(of: 1)))
 
             // Flags
             self.flags = remaining.removingInt(of: 2)

@@ -103,6 +103,17 @@ public extension MySQL {
 
         // MARK: - Issue Command
         // TODO: (TL) Do we need more than one parameter? - seems like deprecated commands need this
+        /*
+        14.6.4.1.1.3 Text Resultset Row
+        
+        ProtocolText::ResultsetRow:
+        A row with the data for each column.
+        
+        NULL is sent as 0xfb
+        
+        everything else is converted into a string and is sent as Protocol::LengthEncodedString.
+        */
+        
         public func issue(_ command: Command, with text: String? = nil) throws /* -> ResultSet */ {
             // https://dev.mysql.com/doc/internals/en/sequence-id.html
             // Sequence number resets for each command
@@ -221,39 +232,12 @@ public extension MySQL {
          - throws: Any socket error encountered during the read process, any packet creation error if invalid data is received.
          */
         private func receive(from socket: Socket) throws -> [Packet] {
+            // TODO: (TL) Add logging of bytes read in DEBUG MODE
+            // TODO: (TL) see if we need to read more
+            // TODO: (TL) Verify sequence numbers
             var data = Data(capacity: Constants.headerSize)
             _ = try socket.read(into: &data)
             return try chunk(data)
-/*
-            // TODO: (TL) Add logging of bytes read in DEBUG MODE
-            // TODO: (TL) see if we need to read more
-            let packet = try Packet(data: data)
-            print(packet)
-            if sequenceNumber > 0 {
-                guard packet.number == sequenceNumber + 1 else {
-                    try parseCommandResponse(from: packet.body, with: handshake?.capabilityFlags ?? [])
-                    throw ServerError.invalidSequenceNumber(with: handshake?.capabilityFlags ?? [])
-                }
-            }
-            sequenceNumber = packet.number
-
-            // TODO: (TL) WIP -- determine packet type
-            if packet.length < data.count { // TODO: (TL) Result Set?
-                // Parse column info packet
-                let numberOfColumns = packet.body[0]
-                var columnPacketData = data.subdata(in: packet.length..<data.count)
-                var columnPackets = [ColumnPacket]()
-                print("Found \(packet.body[0]) columns")
-                for _ in 0..<numberOfColumns {
-                    let nextPacket = try Packet(data: columnPacketData)
-                    let columnPacket = ColumnPacket(data: nextPacket.body)
-                    columnPackets.append(columnPacket)
-                    columnPacketData = columnPacketData.subdata(in: nextPacket.length..<columnPacketData.count)
-                }
-            }
-            // TODO: (TL) ...
-            return packet
- */
         }
 
         private func chunk(_ data: Data) throws -> [Packet] {

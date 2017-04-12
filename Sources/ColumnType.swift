@@ -13,8 +13,7 @@ public extension MySQL {
     // https://dev.mysql.com/doc/internals/en/com-query-response.html#packet-Protocol::ColumnType
 
     /// A structure representing the various column types available in MySQL.
-    public struct ColumnType: OptionSet { // TODO: (TL) Should this be an OptionSet or an enum?
-
+    public struct ColumnType: RawRepresentable, CustomStringConvertible {
         // MARK: - Convenience Constants
         public static let decimal     = ColumnType(rawValue: 0x00)
         public static let tiny        = ColumnType(rawValue: 0x01)
@@ -49,15 +48,77 @@ public extension MySQL {
         public static let geometry    = ColumnType(rawValue: 0xff)
 
         // MARK: - Properties
-
-        /// The raw `UInt8` value of the column type.
         public let rawValue: UInt8
 
-        /**
-         Constructs a `ColumnType` with the given `UInt8` value.
+        public var description: String {
+            if rawValue == ColumnType.decimal.rawValue {
+                return "Decimal"
+            } else if rawValue == ColumnType.tiny.rawValue {
+                return "Tiny"
+            } else if rawValue == ColumnType.short.rawValue {
+                return "Short"
+            } else if rawValue == ColumnType.long.rawValue {
+                return "Long"
+            } else if rawValue == ColumnType.float.rawValue {
+                return "Float"
+            } else if rawValue == ColumnType.double.rawValue {
+                return "Double"
+            } else if rawValue == ColumnType.null.rawValue {
+                return "Null"
+            } else if rawValue == ColumnType.timestamp.rawValue {
+                return "Timestamp"
+            } else if rawValue == ColumnType.longLong.rawValue {
+                return "Long Long"
+            } else if rawValue == ColumnType.int24.rawValue {
+                return "Int 24"
+            } else if rawValue == ColumnType.date.rawValue {
+                return "Date"
+            } else if rawValue == ColumnType.time.rawValue {
+                return "Time"
+            } else if rawValue == ColumnType.dateTime.rawValue {
+                return "Date Time"
+            } else if rawValue == ColumnType.year.rawValue {
+                return "Year"
+            } else if rawValue == ColumnType.newDate.rawValue {
+                return "New Date"
+            } else if rawValue == ColumnType.varchar.rawValue {
+                return "Varchar"
+            } else if rawValue == ColumnType.bit.rawValue {
+                return "Bit"
+            } else if rawValue == ColumnType.timestamp2.rawValue {
+                return "Timestamp 2"
+            } else if rawValue == ColumnType.dateTime2.rawValue {
+                return "Date Time 2"
+            } else if rawValue == ColumnType.time2.rawValue {
+                return "Time 2"
+            // JSON 0xf5?
 
-         - parameter rawValue: The raw `UInt8` value of the column type (bitwise OR'ed) - TODO: (TL) Do we need this type of support - NO?
-         */
+            } else if rawValue == ColumnType.newDecimal.rawValue {
+                return "New Decimal"
+            } else if rawValue == ColumnType.enumeration.rawValue {
+                return "Enumeration"
+            } else if rawValue == ColumnType.set.rawValue {
+                return "Set"
+            } else if rawValue == ColumnType.tinyBlob.rawValue {
+                return "Tiny Blob"
+            } else if rawValue == ColumnType.mediumBlob.rawValue {
+                return "Medium Blob"
+            } else if rawValue == ColumnType.longBLob.rawValue {
+                return "Long Blob"
+            } else if rawValue == ColumnType.blob.rawValue {
+                return "Blob"
+            } else if rawValue == ColumnType.var_string.rawValue {
+                return "Var String"
+            } else if rawValue == ColumnType.string.rawValue {
+                return "String"
+            } else if rawValue == ColumnType.geometry.rawValue {
+                return "Geometry"
+            } else {
+                return "Unknown"
+            }
+        }
+
+        // MARK: - Lifecycle Functions
         public init(rawValue: UInt8) {
             self.rawValue = rawValue
         }

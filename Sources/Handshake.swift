@@ -22,7 +22,19 @@ internal extension MySQL {
         let authPluginName: String
 
         var description: String {
-            return "[HANDSHAKE V\(protocolVersion)]{MySQL V: \(serverVersion)} CID#\(connectionID) ... TODO: (TL) ..."
+            var desc = "Handshake V\(protocolVersion)"
+            let detailStrings = [
+                "MySQL Version: \(serverVersion)",
+                "Connection #: \(connectionID)",
+                "\(capabilityFlags)",
+                "Character Set: \(characterset)",
+                "\(statusFlags)",
+                "AUTH Plugin: \(authPluginName)"
+            ]
+            for string in detailStrings { // TODO: (TL) Use reduce instead?
+                desc.append("\n    - \(string)")
+            }
+            return desc
         }
 
         internal init?(data: Data) {
