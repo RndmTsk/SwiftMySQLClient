@@ -17,22 +17,20 @@ import Foundation
 
 public extension MySQL {
     public struct ResultSet: CustomStringConvertible {
+        // MARK: - Constants
+        internal static let empty = ResultSet(packets: [], columnCount: 0)
+
+        // MARK: - Properties
         public let affectedRows: Int
         public let lastInsertID: Int
-        // private let columnData: Column // TODO: (TL)
-        private let rowData: [[String]] // MySQL returns all strings
+        private let columns: [Column]
+        private let rows: [[String]] // MySQL returns all strings
 
         public var description: String {
             return "RESULTSET ... TODO: (TL)"
         }
 
-        internal init(affectedRows: Int = 0, lastInsertID: Int = 0) {
-            self.init(packets: [],
-                      columnCount: 0,
-                      affectedRows: affectedRows,
-                      lastInsertID: lastInsertID)
-        }
-        
+        // MARK: - Lifecycle Functions
         internal init(packets: ArraySlice<Packet>,
                       columnCount: Int,
                       affectedRows: Int = 0,
@@ -41,21 +39,22 @@ public extension MySQL {
             self.lastInsertID = lastInsertID
             // 2. first N = column definitions, N+1..<COUNT = rows
             guard packets.count >= columnCount else {
-                rowData = []
+                columns = []
+                rows = []
                 return // TODO: (TL) Malformed
             }
 
             // 3. map column definitions
             let endIndex = packets.startIndex.advanced(by: columnCount)
-            let columnPackets = packets[packets.startIndex..<endIndex].flatMap {
+            self.columns = packets[packets.startIndex..<endIndex].flatMap {
                 ($0.body, false) // TODO: (TL) ...
-            }.map(ColumnPacket.init)
-            print(columnPackets)
+            }.map(Column.init)
+            print(columns) // TODO: (TL) ...
             // 4. Check for EOF (if supported)
             let leftoverRange = endIndex..<packets.count
             // 5. parse rows until EOF packet
-            self.rowData = ResultSet.rowPackets(from: packets[leftoverRange])
-            print(rowData)
+            self.rows = ResultSet.rowPackets(from: packets[leftoverRange])
+            print(rows)
         }
 
         private static func rowPackets(from leftovers: ArraySlice<Packet>) -> [[String]] {

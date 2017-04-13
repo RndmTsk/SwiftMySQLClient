@@ -103,20 +103,9 @@ public extension MySQL {
 
         // MARK: - Issue Command
         // TODO: (TL) Do we need more than one parameter? - seems like deprecated commands need this
-        /*
-        14.6.4.1.1.3 Text Resultset Row
-        
-        ProtocolText::ResultsetRow:
-        A row with the data for each column.
-        
-        NULL is sent as 0xfb
-        
-        everything else is converted into a string and is sent as Protocol::LengthEncodedString.
-        */
-        
-        public func issue(_ command: Command, with text: String? = nil) throws /* -> ResultSet */ {
+        public func issue(_ command: Command, with text: String? = nil) throws -> ResultSet {
             // https://dev.mysql.com/doc/internals/en/sequence-id.html
-            // Sequence number resets for each command
+            // - Sequence number resets for each command
             sequenceNumber = 0
 
             guard let socket = socket else {
@@ -130,7 +119,7 @@ public extension MySQL {
             let data = Data(bytes: bytes)
             try write(data, to: socket, false)
             let packets = try receive(from: socket)
-            guard let commandResponsePacket = packets.first else {
+            guard let firstPacket = packets.first else {
                 throw ClientError.receivedNoResponse
             }
 
@@ -138,14 +127,14 @@ public extension MySQL {
             guard packets.count > 1 else {
                 // End of command
                 // TODO: (TL) ...
-                return // ResultSet()
+                return ResultSet.empty
             }
-            let columnCount = Int(commandResponsePacket.body[0])
+            let columnCount = Int(firstPacket.body[0])
             let resultSet = ResultSet(packets: packets[1..<packets.count],
                                       columnCount: columnCount,
                                       affectedRows: 0,
                                       lastInsertID: 0) // TODO: (TL) ...
-            print(resultSet)
+            return resultSet
         }
         
         // MARK: - Private Helper Functions
@@ -200,7 +189,7 @@ public extension MySQL {
         private func disconnect(from socket: Socket) throws {
             state = .disconnecting
             do {
-                try issue(.quit)
+                _ = try issue(.quit) // TODO: (TL) Discard the result set?
             } catch where error is PacketError {
                 // COM_QUIT can either be EOF _or_ 0 length
                 if error as! PacketError != PacketError.noData {

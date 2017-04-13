@@ -9,8 +9,10 @@ class MySQLClientTests: XCTestCase {
         do {
             try connection.open()
             print("{MySQL} connection opened")
-            // try connection.issue(.query, with: "SELECT @@version_comment")
-            try connection.issue(.query, with: "SELECT * FROM snack")
+            var resultSet = try connection.issue(.query, with: "SELECT @@version_comment")
+            print(resultSet)
+            resultSet = try connection.issue(.query, with: "SELECT * FROM snack")
+            print(resultSet)
             print("{MySQL} query completed")
             try connection.close()
             print("{MySQL} connection closed")

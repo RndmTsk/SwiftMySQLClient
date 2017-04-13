@@ -10,7 +10,7 @@ import Foundation
 
 extension MySQL {
 
-    public struct ColumnPacket: CustomStringConvertible {
+    public struct Column: CustomStringConvertible {
         public let catalog: String
         public let schema: String
         public let table: String
