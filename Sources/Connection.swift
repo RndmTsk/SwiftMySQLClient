@@ -125,7 +125,10 @@ public extension MySQL {
 
             // 1. Verify how many packets were received
             guard packets.count > 1 else {
-                let commandResponse = try parseCommandResponse(from: firstPacket.body, with: handshake?.capabilityFlags ?? [])
+                let commandResponse = try parseCommandResponse(from: firstPacket.body, with: handshake?.capabilityFlags)
+                if let okPacket = commandResponse as? OKPacket {
+                    return ResultSet(affectedRows: okPacket.affectedRows, lastInsertID: okPacket.lastInsertID)
+                }
                 return ResultSet.empty
             }
             let columnCount = Int(firstPacket.body[0])
@@ -223,7 +226,6 @@ public extension MySQL {
                 packets.append(packet)
                 remaining.droppingFirst(packet.totalLength)
             } while remaining.count > 0
-            print("--- PARSED \(packets.count) PACKETS -> \(remaining.count) bytes leftover ---")
             return packets
         }
 

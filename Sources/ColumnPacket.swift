@@ -25,7 +25,7 @@ extension MySQL {
         public let length: Int
 
         public var description: String {
-            return "CATALOG: \(catalog)\nSCHEMA: \(schema)\nTABLE: \(table)\nORIGINAL TABLE: \(originalTable)\nCOLUMN NAME: \(columnName)\nORIGINAL COLUMN NAME: \(originalColumnName)\nCHARACTER SET: \(characterSet)\nCOLUMN LENGTH: \(columnLength)\nDATA TYPE: \(columnType)\nFLAGS: \(flags)\nDECIMALS: \(decimals)\nLENGTH: \(length)"
+            return "    CATALOG: \(catalog)\n    SCHEMA: \(schema)\n    TABLE: \(table)\n    ORIGINAL TABLE: \(originalTable)\n    COLUMN NAME: \(columnName)\n    ORIGINAL COLUMN NAME: \(originalColumnName)\n    CHARACTER SET: \(characterSet)\n    COLUMN LENGTH: \(columnLength)\n     DATA TYPE: \(columnType)\n    FLAGS: \(flags)\n    DECIMALS: \(decimals)\n    LENGTH: \(length)"
         }
 
         // TODO: (TL) Clean this up a little
@@ -81,7 +81,6 @@ extension MySQL {
                 string[$len] default values
             }
              */
-            print("IN: \(data.count), LEFTOVER: \(remaining.count)")
             self.length = data.count - remaining.count
         }
     }

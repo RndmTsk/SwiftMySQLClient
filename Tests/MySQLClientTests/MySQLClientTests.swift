@@ -8,14 +8,16 @@ class MySQLClientTests: XCTestCase {
         let connection = MySQL.Connection(configuration: configuration)
         do {
             try connection.open()
-            print("{MySQL} connection opened")
+            print("{INTEGRATION TEST} connection opened")
             var resultSet = try connection.issue(.query, with: "SELECT @@version_comment")
-            print(resultSet)
+            print("[SELECT @@version_comment] \(resultSet)")
             resultSet = try connection.issue(.query, with: "SELECT * FROM snack")
-            print(resultSet)
-            print("{MySQL} query completed")
+            print("[SELECT * FROM snack] \(resultSet)")
+            resultSet = try connection.issue(.ping)
+            print("[PING] \(resultSet)")
+            print("{INTEGRATION TEST} query completed")
             try connection.close()
-            print("{MySQL} connection closed")
+            print("{INTEGRATION TEST} connection closed")
         } catch {
             XCTFail("Encountered error: \(error)")
             return
