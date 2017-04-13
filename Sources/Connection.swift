@@ -130,62 +130,22 @@ public extension MySQL {
             let data = Data(bytes: bytes)
             try write(data, to: socket, false)
             let packets = try receive(from: socket)
-            let packetCount = packets.count
             guard let commandResponsePacket = packets.first else {
                 throw ClientError.receivedNoResponse
             }
 
             // 1. Verify how many packets were received
-            // 2. if > 1 => 1..<ColCount+1 = column definitions, ColCount+1..<N = rows
-            // 3. map column definitions
-            // 4. Check for EOF (if supported)
-            // 5. parse rows until EOF packet
-            if packetCount == 1 {
-                // This is it, figure out the response
+            guard packets.count > 1 else {
+                // End of command
                 // TODO: (TL) ...
-            } else { // Figure out how many columns were impacted
-                guard let columnCountData = commandResponsePacket.body.first else {
-                    throw ServerError.malformedCommandResponse(with: handshake?.capabilityFlags ?? [])
-                }
-                let columnCount = Int(columnCountData)
-                guard packetCount > columnCount else {
-                    throw ServerError.malformedCommandResponse(with: handshake?.capabilityFlags ?? []) // TODO: (TL) Just get more data instead?
-                }
-                print("    \(columnCount) columns.")
-                let columnPackets = packets[1..<columnCount+1].flatMap {
-                    ($0.body, command)
-                }.map(ColumnPacket.init)
-                print(columnPackets)
-                if !configuration.capabilities.contains(.clientDeprecateEOF) {
-                    // EOF Packet in the middle
-                    let packet = packets[columnCount+1]
-                    let commandPacket = EOFPacket(data: packet.body.subdata(in: 1..<packet.body.count), serverCapabilities: handshake?.capabilityFlags ?? [])
-                    // TODO: (TL) ...
-                }
-                for packet in packets[columnCount+1..<packets.count] {
-                    var remaining = packet.body
-                    var index = 0
-                    repeat {
-                        if remaining[0] == MySQL.Constants.eof {
-                            let commandPacket = EOFPacket(data: remaining.subdata(in: 1..<remaining.count), serverCapabilities: handshake?.capabilityFlags ?? [])
-                            remaining.droppingFirst(7) // TODO: (TL) commandPacket.length
-                        } else if remaining[0] == 0xfb {
-                            remaining.droppingFirst()
-                            print("\(columnPackets[index].columnName): NULL")
-                        } else {
-                            let length = remaining.removingLenencInt()
-                            let data = remaining.removingString(of: length)
-                            print("\(columnPackets[index].columnName): \(data)")
-                        }
-                        index += 1
-                    } while remaining.count > 0
-                }
-                // TODO: (TL) EOF packet maybe?
-                // TODO: (TL) do stuff with columnPackets ...
+                return // ResultSet()
             }
-
-            // TODO: (TL) Verify sequence number
-//            try parseCommandResponse(from: response.body, with: handshake?.capabilityFlags ?? [])
+            let columnCount = Int(commandResponsePacket.body[0])
+            let resultSet = ResultSet(packets: packets[1..<packets.count],
+                                      columnCount: columnCount,
+                                      affectedRows: 0,
+                                      lastInsertID: 0) // TODO: (TL) ...
+            print(resultSet)
         }
         
         // MARK: - Private Helper Functions

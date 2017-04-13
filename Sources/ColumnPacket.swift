@@ -28,7 +28,8 @@ extension MySQL {
             return "CATALOG: \(catalog)\nSCHEMA: \(schema)\nTABLE: \(table)\nORIGINAL TABLE: \(originalTable)\nCOLUMN NAME: \(columnName)\nORIGINAL COLUMN NAME: \(originalColumnName)\nCHARACTER SET: \(characterSet)\nCOLUMN LENGTH: \(columnLength)\nDATA TYPE: \(columnType)\nFLAGS: \(flags)\nDECIMALS: \(decimals)\nLENGTH: \(length)"
         }
 
-        init(data: Data, command: Command) {
+        // TODO: (TL) Clean this up a little
+        init(data: Data, commandWasFieldList: Bool = false) {
             var remaining = data
             // Catalog
             let catalogLength = remaining.removingLenencInt()
