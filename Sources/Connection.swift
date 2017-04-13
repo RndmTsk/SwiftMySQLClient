@@ -125,8 +125,7 @@ public extension MySQL {
 
             // 1. Verify how many packets were received
             guard packets.count > 1 else {
-                // End of command
-                // TODO: (TL) ...
+                let commandResponse = try parseCommandResponse(from: firstPacket.body, with: handshake?.capabilityFlags ?? [])
                 return ResultSet.empty
             }
             let columnCount = Int(firstPacket.body[0])
@@ -260,7 +259,7 @@ public extension MySQL {
          - parameter data: The raw data received from the socket.
          - throws: Any errors encountered in constructing the packet response, any errors parsed from the server.
          */
-        private func parseCommandResponse(from data: Data, with capabilities: CapabilityFlag) throws -> CommandPacket {
+        private func parseCommandResponse(from data: Data, with capabilities: CapabilityFlag? = nil) throws -> CommandPacket {
             guard let responseFlag = data.first else {
                 throw ServerError.emptyResponse(with: capabilities)
             }

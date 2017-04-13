@@ -31,18 +31,19 @@ internal extension MySQL {
             return response
         }
 
-        init(data: Data, serverCapabilities: CapabilityFlag) {
+        init(data: Data, serverCapabilities: CapabilityFlag? = nil) {
             var remaining = data
+            let capabilities = serverCapabilities ?? []
             self.affectedRows = remaining.removingLenencInt()
             self.lastInsertID = remaining.removingLenencInt()
 
             let status: StatusFlag
-            if serverCapabilities.contains(.clientProtocol41) {
+            if capabilities.contains(.clientProtocol41) {
                 status = StatusFlag(rawValue: remaining.uInt16)
                 remaining.droppingFirst(2)
                 self.numberOfWarnings = remaining.removingInt(of: 2)
             } else {
-                if serverCapabilities.contains(.clientTransactions) {
+                if capabilities.contains(.clientTransactions) {
                     status = StatusFlag(rawValue: remaining.uInt16)
                     remaining.droppingFirst(2)
                 } else {
@@ -51,7 +52,7 @@ internal extension MySQL {
                 self.numberOfWarnings = 0
             }
 
-            if serverCapabilities.contains(.clientSessionTrack) {
+            if capabilities.contains(.clientSessionTrack) {
                 let infoLength = remaining.removingLenencInt()
                 self.info = remaining.removingString(of: infoLength)
                 if status.contains(.sessionStateChanged) {
@@ -81,9 +82,10 @@ internal extension MySQL {
             return "WARN: \(numberOfWarnings), STATUS: \(status)"
         }
 
-        init(data: Data, serverCapabilities: CapabilityFlag) {
+        init(data: Data, serverCapabilities: CapabilityFlag? = nil) {
             var remaining = data
-            if serverCapabilities.contains(.clientProtocol41) {
+            let capabilities = serverCapabilities ?? []
+            if capabilities.contains(.clientProtocol41) {
                 self.numberOfWarnings = remaining.removingInt(of: 2)
                 self.status = StatusFlag(rawValue: UInt16(remaining.removingInt(of: 2) & 0xffff))
             } else {

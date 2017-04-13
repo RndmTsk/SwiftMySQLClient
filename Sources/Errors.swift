@@ -38,9 +38,9 @@ public extension MySQL {
             return "[MySQL Error #\(code)] \(cp41Message)\(message)"
         }
 
-        public init(data: Data, capabilities: CapabilityFlag) {
+        public init(data: Data, capabilities: CapabilityFlag? = nil) {
             var remaining = data
-            let serverCapabilities = capabilities
+            let serverCapabilities = capabilities ?? []
             self.code = remaining.removingInt(of: 2)
             if serverCapabilities.contains(.clientProtocol41) {
                 // TODO: (TL) ...
@@ -56,7 +56,7 @@ public extension MySQL {
             self.message = remaining.removingEOFEncodedString()
         }
 
-        private init(capabilities: CapabilityFlag,
+        private init(capabilities: CapabilityFlag? = nil,
                      code: Int = Constants.unknown,
                      marker: String = Constants.standardMarker,
                      state: String = String(Constants.unknown),
@@ -68,11 +68,11 @@ public extension MySQL {
             self.message = message
         }
 
-        public static func unknown(with capabilities: CapabilityFlag = []) -> ServerError {
+        public static func unknown(with capabilities: CapabilityFlag? = nil) -> ServerError {
             return ServerError(capabilities: capabilities)
         }
 
-        public static func emptyResponse(with capabilities: CapabilityFlag = []) -> ServerError {
+        public static func emptyResponse(with capabilities: CapabilityFlag? = nil) -> ServerError {
             return ServerError(capabilities: capabilities,
                                code: Constants.emptyResponse,
                                marker: Constants.standardMarker,
@@ -80,7 +80,7 @@ public extension MySQL {
                                message: Constants.emtpyMessage)
         }
 
-        public static func invalidSequenceNumber(with capabilities: CapabilityFlag = []) -> ServerError {
+        public static func invalidSequenceNumber(with capabilities: CapabilityFlag? = nil) -> ServerError {
             return ServerError(capabilities: capabilities,
                                code: Constants.invalidSequenceNumber,
                                marker: Constants.standardMarker,
@@ -88,7 +88,7 @@ public extension MySQL {
                                message: Constants.invalidSequenceNumberMessage)
         }
 
-        public static func malformedCommandResponse(with capabilities: CapabilityFlag = []) -> ServerError {
+        public static func malformedCommandResponse(with capabilities: CapabilityFlag? = nil) -> ServerError {
             return ServerError(capabilities: capabilities,
                                code: Constants.malformedCommand,
                                marker: Constants.standardMarker,
