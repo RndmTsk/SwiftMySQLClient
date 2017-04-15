@@ -103,7 +103,7 @@ public extension MySQL {
 
         // MARK: - Issue Command
         // TODO: (TL) Do we need more than one parameter? - seems like deprecated commands need this
-        public func issue(_ command: Command, with text: String? = nil) throws -> ResultSet {
+        public func issue(_ command: Command, with statement: String? = nil) throws -> ResultSet {
             // https://dev.mysql.com/doc/internals/en/sequence-id.html
             // - Sequence number resets for each command
             sequenceNumber = 0
@@ -112,7 +112,7 @@ public extension MySQL {
                 throw ClientError.socketUnavailable
             }
             var bytes: [UInt8] = [command.rawValue]
-            if let text = text {
+            if let text = statement {
                 bytes.append(contentsOf: text.utf8)
                 bytes.append(0)
             }
@@ -132,11 +132,20 @@ public extension MySQL {
                 return ResultSet.empty
             }
             let columnCount = Int(firstPacket.body[0])
-            let resultSet = ResultSet(packets: packets[1..<packets.count],
-                                      columnCount: columnCount,
-                                      affectedRows: 0,
-                                      lastInsertID: 0) // TODO: (TL) ...
-            return resultSet
+            return ResultSet(packets: packets[1..<packets.count], columnCount: columnCount)
+        }
+
+        // MARK: - Common Command Helper Functions
+        public func query(_ statement: String) throws -> ResultSet {
+            return try issue(.query, with: statement)
+        }
+
+        public func insert(_ statement: String) throws -> ResultSet {
+            return try issue(.query, with: statement)
+        }
+
+        public func update(_ statement: String) throws -> ResultSet {
+            return try issue(.query, with: statement)
         }
         
         // MARK: - Private Helper Functions
