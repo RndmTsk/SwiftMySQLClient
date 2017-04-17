@@ -82,7 +82,7 @@ public extension MySQL {
                 socket = try Socket.create()
             }
             guard let socket = socket else {
-                throw ClientError.socketUnavailable
+                throw ClientError.noConnection
             }
             try connect(with: socket)
             try authorize(socket)
@@ -95,7 +95,7 @@ public extension MySQL {
          */
         public func close() throws {
             guard let socket = socket else {
-                throw ClientError.socketUnavailable
+                throw ClientError.noConnection
             }
             try disconnect(from: socket)
             // TODO: (TL) Check other stuff like in transaction
@@ -109,7 +109,7 @@ public extension MySQL {
             sequenceNumber = 0
 
             guard let socket = socket else {
-                throw ClientError.socketUnavailable
+                throw ClientError.noConnection
             }
             var bytes: [UInt8] = [command.rawValue]
             if let text = statement {
@@ -131,8 +131,112 @@ public extension MySQL {
                 }
                 return ResultSet.empty
             }
-            let columnCount = Int(firstPacket.body[0])
-            return ResultSet(packets: packets[1..<packets.count], columnCount: columnCount)
+            if command == .stmtPrepare {
+                var remaining = firstPacket.body
+                let status = remaining.removingInt(of: 1)
+                guard status == 0 else {
+                    throw ServerError(data: firstPacket.body.subdata(in: 1..<firstPacket.body.count), capabilities: handshake?.capabilityFlags)
+                }
+                let statementID = remaining.removingInt(of: 4)
+                let columnCount = remaining.removingInt(of: 2)
+
+                // TODO: (TL) Do we need this?
+                let numParams = remaining.removingInt(of: 2)
+                print("NUM PARAMS: \(numParams)")
+                remaining.droppingFirst() // 1 byte of filler
+
+                // TODO: (TL) Do we need this?
+                let warningCount = remaining.removingInt(of: 2)
+                print("WARNING COUNT: \(warningCount)")
+                return ResultSet(packets: packets[1..<packets.count], columnCount: columnCount, affectedRows: 0, lastInsertID: 0, statementID: statementID)
+            } else {
+                let columnCount = Int(firstPacket.body[0])
+                return ResultSet(packets: packets[1..<packets.count], columnCount: columnCount)
+            }
+        }
+
+        /*
+         1 [COM_STMT_EXECUTE]
+         4 stmt-id
+         1 flags [0x00 = CURSOR_TYPE_NO_CURSOR, 0x01 = CURSOR_TYPE_READ_ONLY, 0x02 = CURSOR_TYPE_FOR_UPDATE, 0x04 = CURSOR_TYPE_SCROLLABLE]
+         4 iteration-count - ALWAYS 1
+         if num-params > 0:
+         n NULL-bitmap, length: (num-params+7)/8 *** NOTE ***
+         1 new-params-bound-flag
+         if new-params-bound-flag == 1:
+         n type of each parameter, length: num-params*2
+         n value of each parameter
+
+         *** NOTE ***
+         // Binary Protocol ResultSet Row, num-fields and field-pos offset == 2
+         // COM_STMT_EXECUTE, num-fields, field-pos offset == 0
+         NULL-bitmap-bytes = (num-fields + 7 + offset) / 8
+         To store a NULL bit in the bitmap, you need to calculate the bitmap-byte (starting with 0) and the bitpos (starting with 0) in that byte from the field-index (starting with 0):
+         NULL-bitmap-byte = ((field-pos + offset) / 8)
+         NULL-bitmap-bit  = ((field-pos + offset) % 8)
+         ResultSet Row, 9 fields, 9th field is a NULL
+         9th field -> field-index == 8, offset == 2
+         nulls -> [00] [00]
+
+         byte_pos = (10/8) = 1
+         bit_pos = (10%8) = 2
+
+         nulls[byte_pos] |= 1 << bit_pos
+         nulls[1] |= 1 << 2
+
+         nulls -> [00] [04]
+         */
+        public func issue(_ command: Command, with preparedStatement: PreparedStatement) throws -> ResultSet {
+            // https://dev.mysql.com/doc/internals/en/sequence-id.html
+            // - Sequence number resets for each command
+            sequenceNumber = 0
+            
+            guard let socket = socket else {
+                throw ClientError.noConnection
+            }
+            var bytes: [UInt8] = [command.rawValue]
+            if let text = statement {
+                bytes.append(contentsOf: text.utf8)
+                bytes.append(0)
+            }
+            let data = Data(bytes: bytes)
+            try write(data, to: socket, false)
+            let packets = try receive(from: socket)
+            guard let firstPacket = packets.first else {
+                throw ClientError.receivedNoResponse
+            }
+            
+            // 1. Verify how many packets were received
+            guard packets.count > 1 else {
+                let commandResponse = try parseCommandResponse(from: firstPacket.body, with: handshake?.capabilityFlags)
+                if let okPacket = commandResponse as? OKPacket {
+                    return ResultSet(affectedRows: okPacket.affectedRows, lastInsertID: okPacket.lastInsertID)
+                }
+                return ResultSet.empty
+            }
+            if command == .stmtPrepare {
+                var remaining = firstPacket.body
+                let status = remaining.removingInt(of: 1)
+                guard status == 0 else {
+                    throw ServerError(data: firstPacket.body.subdata(in: 1..<firstPacket.body.count), capabilities: handshake?.capabilityFlags)
+                }
+                let statementID = remaining.removingInt(of: 4)
+                let columnCount = remaining.removingInt(of: 2)
+                
+                // TODO: (TL) Do we need this?
+                let numParams = remaining.removingInt(of: 2)
+                print("NUM PARAMS: \(numParams)")
+                remaining.droppingFirst() // 1 byte of filler
+                
+                // TODO: (TL) Do we need this?
+                let warningCount = remaining.removingInt(of: 2)
+                print("WARNING COUNT: \(warningCount)")
+                return ResultSet(packets: packets[1..<packets.count], columnCount: columnCount, affectedRows: 0, lastInsertID: 0, statementID: statementID)
+            } else {
+                let columnCount = Int(firstPacket.body[0])
+                return ResultSet(packets: packets[1..<packets.count], columnCount: columnCount)
+            }
+            return ResultSet.empty
         }
 
         // MARK: - Common Command Helper Functions
@@ -146,6 +250,15 @@ public extension MySQL {
 
         public func update(_ statement: String) throws -> ResultSet {
             return try issue(.query, with: statement)
+        }
+
+        // MARK: - Statement Functions
+        public func createStatement(with query: String) -> Statement {
+            return Statement(query: query, connection: self)
+        }
+
+        public func prepareStatement(with query: String) throws -> PreparedStatement {
+            return try PreparedStatement(template: query, connection: self)
         }
         
         // MARK: - Private Helper Functions

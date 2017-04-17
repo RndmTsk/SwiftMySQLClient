@@ -28,6 +28,25 @@ class MySQLClientTests: XCTestCase {
         }
     }
 
+    func testPreparedStatement() {
+        let credentials = URLCredential(user: "snack", password: "snack", persistence: .none)
+        let configuration = MySQL.ClientConfiguration(host: "localhost", database: "snacktracker", credentials: credentials)
+        let connection = MySQL.Connection(configuration: configuration)
+        do {
+            try connection.open()
+            print("{INTEGRATION TEST} connection opened")
+            let preparedStatement = try connection.prepareStatement(with: "SELECT * FROM snack where id = ?")
+            print("[PREPARE] \(preparedStatement)")
+            let resultSet = preparedStatement.execute(with: [1])
+            print("{INTEGRATION TEST} query completed")
+            try connection.close()
+            print("{INTEGRATION TEST} connection closed")
+        } catch {
+            XCTFail("Encountered error: \(error)")
+            return
+        }
+    }
+
 
     static var allTests : [(String, (MySQLClientTests) -> () throws -> Void)] {
         return [

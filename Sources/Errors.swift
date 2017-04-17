@@ -98,7 +98,7 @@ public extension MySQL {
     }
 
     public enum ClientError: Error {
-        case socketUnavailable
+        case noConnection
         case invalidHandshake
         case receivedNoResponse
         case receivedExtraPackets
