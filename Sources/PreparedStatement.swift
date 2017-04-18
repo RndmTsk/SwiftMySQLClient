@@ -10,15 +10,19 @@ import Foundation
 
 public extension MySQL {
     public struct PreparedStatement {
-        public var statementID: Int?
         public let template: String
+        public private(set) var statementID = [UInt8]()
+        public private(set) var parameterCount = 0
+        public private(set) var values = [Any]()
+        public private(set) var columns = [Column]()
+
+        internal private(set) var usingNewValues = false
 
         weak internal var connection: Connection?
 
         internal init(template: String, connection: Connection) throws {
             self.template = template
             self.connection = connection
-            self.statementID = nil
 
             try self.prepare()
         }
@@ -27,20 +31,41 @@ public extension MySQL {
             guard let connection = connection else {
                 throw ClientError.noConnection
             }
-            let resultSet = try connection.issue(.stmtPrepare, with: template)
-            print("[PREPARED STATEMENT] \(resultSet)")
-            statementID = resultSet.statementID
+            try connection.issue(.stmtPrepare, with: template)
+            let commandResponse = try connection.receiveCommandResponse()
+            guard let additionalPackets = commandResponse.additionalPackets else {
+                throw ClientError.receivedNoResponse // TODO: (TL) New error type
+            }
+            let response = try PreparedStatementResponse(firstPacket: commandResponse.firstPacket, additionalPackets: additionalPackets)
+            print("[PREPARED STATEMENT] \(response)")
+            statementID = response.statementID
+            parameterCount = response.parameterCount
+            columns = response.columns
         }
 
         // .stmtFetch ??
         // .stmtSendLongData ??
 
-        public func execute(with values: [Any]) throws -> ResultSet {
+        public mutating func reExecute() throws -> ResultSet {
+            usingNewValues = false
+            return try execute()
+        }
+
+        public mutating func execute(with values: [Any]) throws -> ResultSet {
+            self.usingNewValues = true
+            self.values = values
+            return try execute()
+        }
+
+        private func execute() throws -> ResultSet {
             guard let connection = connection else {
                 throw ClientError.noConnection
             }
-            return try connection.issue(.stmtExecute, with: self)
-            // TODO: (TL) issue prepared statement w/ values
+            guard parameterCount == values.count else {
+                throw ClientError.receivedNoResponse // TODO: (TL) New error type
+            }
+            try connection.issue(self)
+            // TODO: (TL) ...
             return ResultSet.empty
         }
 
@@ -58,7 +83,9 @@ public extension MySQL {
             guard let connection = connection else {
                 throw ClientError.noConnection
             }
-            return try connection.issue(command)
+            try connection.issue(command)
+            let commandResponse = try connection.receiveCommandResponse()
+            return try connection.basicResponse(from: commandResponse.firstPacket)
         }
     }
 }
