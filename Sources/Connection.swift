@@ -178,7 +178,6 @@ public extension MySQL {
             // TODO: (TL) ...
         }
 
-        // private func issue(_ command: Command, with preparedStatement: PreparedStatement) throws {
         internal func issue(_ command: Command, with statement: String? = nil) throws {
             // https://dev.mysql.com/doc/internals/en/sequence-id.html
             // - Sequence number resets for each command
@@ -236,20 +235,33 @@ public extension MySQL {
 
             let mapSize = (preparedStatement.parameterCount + 7) / 8
             var nullBitMap = [UInt8](repeatElement(0, count: mapSize))
-            var fieldMap = [UInt8](repeatElement(0, count: preparedStatement.parameterCount * 2)) // TODO: (TL) should this be * 3?
+            var fieldKeys = [UInt8]()
+            var fieldValues = [UInt8]()
             if preparedStatement.usingNewValues {
-                for value in preparedStatement.values {
+                for (index, value) in preparedStatement.values.enumerated() {
                     // TODO: (TL) turn into NULL-bitmap and parameters
+                    if value is NSNull || (value is String && (value as! String).lowercased() == "null") {
+                        nullBitMap[0] |= 1 // <<
+                    } else {
+                        guard let columnType = preparedStatement.columnType(for: index) else {
+                            throw ClientError.invalidHandshake // TODO: (TL) New error type for prepared statement column index
+                        }
+                        fieldKeys.append(columnType.rawValue)
+                        fieldValues.append(contentsOf: value.asUInt8Array)
+                    }
                 }
             }
             
             bytes.append(contentsOf: nullBitMap)
             if preparedStatement.usingNewValues {
                 bytes.append(1)
-                bytes.append(contentsOf: fieldMap)
+                bytes.append(contentsOf: fieldKeys)
+                bytes.append(contentsOf: fieldValues)
             } else {
                 bytes.append(0)
             }
+            let data = Data(bytes: bytes)
+            try write(data, false)
         }
 
         // MARK: - Command Response

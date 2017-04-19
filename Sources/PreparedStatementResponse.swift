@@ -36,7 +36,7 @@ extension MySQL {
             self.columns = additionalPackets[additionalPackets.startIndex..<endIndex].flatMap {
                 ($0.body, false) // TODO: (TL) ...
                 }.map(Column.init)
-            // TODO: (TL) Is there more stuff?
+            // TODO: (TL) Is there more stuff - EOF maybe?
         }
     }
 }

@@ -13,7 +13,7 @@ public extension MySQL {
         public let template: String
         public private(set) var statementID = [UInt8]()
         public private(set) var parameterCount = 0
-        public private(set) var values = [Any]()
+        public private(set) var values = [UInt8LSBArrayMappable]()
         public private(set) var columns = [Column]()
 
         internal private(set) var usingNewValues = false
@@ -51,7 +51,7 @@ public extension MySQL {
             return try execute()
         }
 
-        public mutating func execute(with values: [Any]) throws -> ResultSet {
+        public mutating func execute(with values: [UInt8LSBArrayMappable]) throws -> ResultSet {
             self.usingNewValues = true
             self.values = values
             return try execute()
@@ -65,8 +65,11 @@ public extension MySQL {
                 throw ClientError.receivedNoResponse // TODO: (TL) New error type
             }
             try connection.issue(self)
-            // TODO: (TL) ...
-            return ResultSet.empty
+            let commandResponse = try connection.receiveCommandResponse()
+            guard let additionalPackets = commandResponse.additionalPackets else {
+                return try connection.basicResponse(from: commandResponse.firstPacket)
+            }
+            return try connection.response(from: commandResponse.firstPacket, with: additionalPackets)
         }
 
         public func reset() throws {
@@ -86,6 +89,13 @@ public extension MySQL {
             try connection.issue(command)
             let commandResponse = try connection.receiveCommandResponse()
             return try connection.basicResponse(from: commandResponse.firstPacket)
+        }
+
+        internal func columnType(for index: Int) -> ColumnType? {
+            guard index < columns.count else {
+                return nil
+            }
+            return columns[index + 1].columnType // TODO: (TL) ? is a column somehow?
         }
     }
 }
