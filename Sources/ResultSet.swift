@@ -23,6 +23,7 @@ public extension MySQL {
         // MARK: - Properties
         public let affectedRows: Int
         public let lastInsertID: Int
+        public let statementID: Int
         private let columns: [Column]
         private let rows: [[String]] // MySQL returns all strings
 
@@ -52,13 +53,15 @@ public extension MySQL {
         internal init(packets: ArraySlice<Packet> = [],
                       columnCount: Int = 0,
                       affectedRows: Int = 0,
-                      lastInsertID: Int = 0) {
+                      lastInsertID: Int = 0,
+                      statementID: Int = 0) {
             self.affectedRows = affectedRows
             self.lastInsertID = lastInsertID
+            self.statementID = statementID
             // 2. first N = column definitions, N+1..<COUNT = rows
             guard packets.count >= columnCount else {
-                columns = []
-                rows = []
+                self.columns = []
+                self.rows = []
                 return // TODO: (TL) Malformed
             }
 

@@ -10,6 +10,7 @@ import Foundation
 import CryptoSwift
 
 internal extension URLCredential {
+    // TODO: (TL) Link to docs
     // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
     internal func native41SecurePassword(with salt: [UInt8]) -> [UInt8] {
         guard let password = password else {
