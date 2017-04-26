@@ -59,7 +59,7 @@ public extension MySQL {
             self.lastInsertID = lastInsertID
             self.statementID = statementID
             // 2. first N = column definitions, N+1..<COUNT = rows
-            guard packets.count >= columnCount else {
+            guard columnCount > 0, packets.count >= columnCount else {
                 self.columns = []
                 self.rows = []
                 return // TODO: (TL) Malformed

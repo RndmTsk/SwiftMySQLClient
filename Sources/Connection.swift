@@ -91,36 +91,39 @@ public extension MySQL {
          - throws: If the socket has not been created or if disconnecting fails.
          */
         public func close() throws {
-            state = .disconnecting
-            do {
-                _ = try issue(.quit) // TODO: (TL) Discard the result set?
-            } catch where error is PacketError {
-                // COM_QUIT can either be EOF _or_ 0 length
-                if error as! PacketError != PacketError.noData {
-                    throw error
-                }
-            }
-            socket?.close()
-            state = .disconnected
             // TODO: (TL) Check other stuff like in transaction
+            state = .disconnecting
+            let success = {
+                self.socket?.close()
+                self.state = .disconnected
+            }
+            guard let error = issue(.quit) else {
+                success()
+                return
+            }
+            // COM_QUIT can either be EOF _or_ 0 length
+            if let packetError = error as? PacketError,
+                packetError == .noData {
+                success()
+                return
+            }
+            throw error
         }
 
         // MARK: - Common Command Helper Functions
-        public func query(_ statement: String) throws -> ResultSet {
-            try issue(.query, with: statement)
-            let commandResponse = try receiveCommandResponse()
-            guard let additionalPackets = commandResponse.additionalPackets else {
-                return try basicResponse(from: commandResponse.firstPacket)
+        public func query(_ statement: String) -> Result<ResultSet> {
+            if let error = issue(.query, with: statement) {
+                return .failure(error)
             }
-            return try response(from: commandResponse.firstPacket, with: additionalPackets)
+            return receiveCommandResponse()
         }
 
-        public func insert(_ statement: String) throws -> ResultSet {
-            return try query(statement)
+        public func insert(_ statement: String) -> Result<ResultSet> {
+            return query(statement)
         }
 
-        public func update(_ statement: String) throws -> ResultSet {
-            return try query(statement)
+        public func update(_ statement: String) -> Result<ResultSet> {
+            return query(statement)
         }
 
         // MARK: - Statement Functions
@@ -128,8 +131,13 @@ public extension MySQL {
             return Statement(query: query, connection: self)
         }
 
-        public func prepareStatement(with query: String) throws -> PreparedStatement {
-            return try PreparedStatement(template: query, connection: self)
+        public func prepareStatement(with query: String) -> Result<PreparedStatement> {
+            do {
+                let preparedStatement = try PreparedStatement(template: query, connection: self)
+                return .success(preparedStatement)
+            } catch {
+                return .failure(error)
+            }
         }
         
         // MARK: - Private Helper Functions
@@ -156,9 +164,11 @@ public extension MySQL {
          */
         private func authorize() throws {
             state = .authorizing
-            var packets = try receive()
-            guard let handshakePacket = packets.first, packets.count == 1 else {
-                throw ClientError.receivedExtraPackets // TODO: (TL) is this actually an error??
+            var result = receive()
+            guard let authPackets = result.value,
+                let handshakePacket = authPackets.first,
+                authPackets.count == 1 else {
+                throw result.error ?? ClientError.receivedExtraPackets // TODO: (TL) is this actually an error??
             }
             // TODO: (TL) Check packet type
             guard let handshake = Handshake(data: handshakePacket.body)  else {
@@ -168,17 +178,25 @@ public extension MySQL {
             self.handshake = handshake
             let handshakeResponse = HandshakeResponse(handshake: handshake, configuration: configuration)
 
-            try write(handshakeResponse.data)
-            packets = try receive()
-            // TODO: (TL) Verify sequence number
-            guard let commandPacket = packets.first, packets.count == 1 else {
-                throw ClientError.receivedExtraPackets
+            if let writeError = write(handshakeResponse.data) {
+                throw writeError
             }
-            _ = try parseCommandResponse(from: commandPacket.body, with: handshake.capabilityFlags)
-            // TODO: (TL) ...
+
+            // TODO: (TL) Verify sequence number
+            result = receive()
+            guard let packets = result.value,
+                let commandPacket = packets.first,
+                packets.count == 1 else {
+                throw result.error ?? ClientError.receivedExtraPackets
+            }
+            let parseResult = parseCommandResponse(from: commandPacket.body, with: handshake.capabilityFlags)
+            if let parseError = parseResult.error {
+                throw parseError
+            }
+            // TODO: (TL) Nothing happens with response?
         }
 
-        internal func issue(_ command: Command, with statement: String? = nil) throws {
+        internal func issue(_ command: Command, with statement: String? = nil) -> Error? {
             // https://dev.mysql.com/doc/internals/en/sequence-id.html
             // - Sequence number resets for each command
             sequenceNumber = 0
@@ -188,8 +206,7 @@ public extension MySQL {
                 bytes.append(contentsOf: text.utf8)
                 bytes.append(0)
             }
-            let data = Data(bytes: bytes)
-            try write(data, false)
+            return write(Data(bytes: bytes), false)
         }
 
         /* -- SENDING A PREPARED STATEMENT --
@@ -223,7 +240,7 @@ public extension MySQL {
          
          nulls -> [00] [04]
          */
-        internal func issue(_ preparedStatement: PreparedStatement) throws {
+        internal func issue(_ preparedStatement: PreparedStatement) -> Error? {
             // https://dev.mysql.com/doc/internals/en/sequence-id.html
             // - Sequence number resets for each command
             sequenceNumber = 0
@@ -239,15 +256,19 @@ public extension MySQL {
             var fieldValues = [UInt8]()
             if preparedStatement.usingNewValues {
                 for (index, value) in preparedStatement.values.enumerated() {
+                    guard let representedValue = value as? UInt8LSBArrayMappable else {
+                        return ClientError.noConnection // TODO: (TL) New error type for "unsupported data type"
+                    }
+
                     // TODO: (TL) turn into NULL-bitmap and parameters
                     if value is NSNull || (value is String && (value as! String).lowercased() == "null") {
                         nullBitMap[0] |= 1 // <<
                     } else {
                         guard let columnType = preparedStatement.columnType(for: index) else {
-                            throw ClientError.invalidHandshake // TODO: (TL) New error type for prepared statement column index
+                            return ClientError.invalidHandshake // TODO: (TL) New error type for prepared statement column index
                         }
                         fieldKeys.append(columnType.rawValue)
-                        fieldValues.append(contentsOf: value.asUInt8Array)
+                        fieldValues.append(contentsOf: representedValue.asUInt8Array)
                     }
                 }
             }
@@ -260,24 +281,29 @@ public extension MySQL {
             } else {
                 bytes.append(0)
             }
-            let data = Data(bytes: bytes)
-            try write(data, false)
+            return write(Data(bytes: bytes), false)
         }
 
         // MARK: - Command Response
-        internal func basicResponse(from packet: Packet) throws -> ResultSet {
-            let commandResponse = try parseCommandResponse(from: packet.body, with: handshake?.capabilityFlags)
-            if let okPacket = commandResponse as? OKPacket {
-                return ResultSet(affectedRows: okPacket.affectedRows, lastInsertID: okPacket.lastInsertID)
+        internal func basicResponse(from packet: Packet) -> Result<ResultSet> {
+            let commandResponse = parseCommandResponse(from: packet.body,
+                                                       with: handshake?.capabilityFlags)
+            if let okPacket = commandResponse.value as? OKPacket {
+                let resultSet = ResultSet(affectedRows: okPacket.affectedRows, lastInsertID: okPacket.lastInsertID)
+                return .success(resultSet)
+            } else if let error = commandResponse.error {
+                return .failure(error)
+            } else {
+                return .success(ResultSet.empty) // Deprecated EOF Packet
             }
-            return ResultSet.empty
         }
 
-        internal func response(from firstPacket: Packet, with additionalPackets: ArraySlice<Packet>) throws -> ResultSet {
+        internal func response(from firstPacket: Packet,
+                               with additionalPackets: ArraySlice<Packet>) -> Result<ResultSet> {
             guard let firstByte = firstPacket.body.first else {
-                throw ClientError.receivedNoResponse // TODO: (TL) new error (likely server?)
+                return .failure(ClientError.receivedNoResponse) // TODO: (TL) new error (likely server?)
             }
-            return ResultSet(packets: additionalPackets, columnCount: Int(firstByte))
+            return .success(ResultSet(packets: additionalPackets, columnCount: Int(firstByte)))
         }
 
         // MARK: - Data Receive
@@ -289,16 +315,20 @@ public extension MySQL {
          - returns: A `Packet` object if successfully parsed.
          - throws: Any socket error encountered during the read process, any packet creation error if invalid data is received.
          */
-        private func receive() throws -> [Packet] {
+        private func receive() -> Result<[Packet]> {
             // TODO: (TL) Add logging of bytes read in DEBUG MODE
             // TODO: (TL) see if we need to read more
             // TODO: (TL) Verify sequence numbers
             guard let socket = socket else {
-                throw ClientError.noConnection // TODO: (TL) Manage state for these
+                return .failure(ClientError.noConnection) // TODO: (TL) Manage state for these
             }
             var data = Data(capacity: Constants.headerSize)
-            _ = try socket.read(into: &data)
-            return try chunk(data)
+            do {
+                _ = try socket.read(into: &data)
+                return .success(try chunk(data))
+            } catch {
+                return .failure(error)
+            }
         }
 
         private func chunk(_ data: Data) throws -> [Packet] {
@@ -312,17 +342,38 @@ public extension MySQL {
             return packets
         }
 
-        internal func receiveCommandResponse() throws -> (firstPacket: Packet, additionalPackets: ArraySlice<Packet>?) {
-            let packets = try receive()
-            guard let firstPacket = packets.first else {
-                throw ClientError.receivedNoResponse
+        internal func receiveCommandResponse() -> Result<ResultSet> {
+            let result = receive()
+            guard let packets = result.value,
+                let firstPacket = packets.first else {
+                return .failure(result.error ?? ClientError.receivedNoResponse)
             }
-            
+
             // 1. Verify how many packets were received
             guard packets.count > 1 else {
-                return (firstPacket, nil)
+                return response(from: firstPacket,
+                                with: packets[1..<packets.count])
             }
-            return (firstPacket, packets[1..<packets.count])
+            return basicResponse(from: firstPacket)
+        }
+
+        internal func receivePreparedStatementResponse() -> Result<PreparedStatementResponse> {
+            let result = receive()
+            guard let packets = result.value,
+                let firstPacket = packets.first else {
+                    return .failure(result.error ?? ClientError.receivedNoResponse)
+            }
+            // Ensure we have more than 1 packet
+            guard packets.count > 1 else {
+                return .failure(ClientError.receivedNoResponse) // TODO: (TL) New error type
+            }
+            do {
+                let response = try PreparedStatementResponse(firstPacket: firstPacket,
+                                                             additionalPackets: packets[1..<packets.count])
+                return .success(response)
+            } catch {
+                return .failure(error)
+            }
         }
 
         /**
@@ -332,9 +383,9 @@ public extension MySQL {
          - parameter socket: The socket object previously created.
          - throws: Any socket error encountered during the write process.
          */
-        private func write(_ data: Data, _ incrementSequenceNumber: Bool = true) throws {
+        private func write(_ data: Data, _ incrementSequenceNumber: Bool = true) -> Error? {
             guard let socket = socket else {
-                throw ClientError.noConnection // TODO: (TL) Manage state for these
+                return ClientError.noConnection // TODO: (TL) Manage state for these
             }
             if incrementSequenceNumber {
                 sequenceNumber = (sequenceNumber + 1) % UInt8.max
@@ -349,9 +400,14 @@ public extension MySQL {
             var packetData = Data(bytes: encodedLength)
             packetData.append(sequenceNumber)
             packetData.append(data)
-            try socket.write(from: packetData)
+            do {
+                try socket.write(from: packetData)
+            } catch {
+                return error
+            }
             // TODO: (TL) Add logging of bytes read in DEBUG MODE
             print("[#\(sequenceNumber)]{WRITE} \(data.count) bytes")
+            return nil
         }
 
         /**
@@ -360,23 +416,23 @@ public extension MySQL {
          - parameter data: The raw data received from the socket.
          - throws: Any errors encountered in constructing the packet response, any errors parsed from the server.
          */
-        private func parseCommandResponse(from data: Data, with capabilities: CapabilityFlag? = nil) throws -> CommandPacket {
+        private func parseCommandResponse(from data: Data, with capabilities: CapabilityFlag? = nil) -> Result<CommandPacket> {
             guard let responseFlag = data.first else {
-                throw ServerError.emptyResponse(with: capabilities)
+                return .failure(ServerError.emptyResponse(with: capabilities))
             }
             let remaining = data.subdata(in: 1..<data.count)
             if responseFlag == MySQL.Constants.ok
                 && data.count >= MySQL.Constants.okResponseMinLength {
-                return OKPacket(data: remaining, serverCapabilities: capabilities)
+                return .success(OKPacket(data: remaining, serverCapabilities: capabilities))
             } else if responseFlag == MySQL.Constants.eof
                 && data.count < MySQL.Constants.eofResponseMaxLength {
                 // Properly formatted EOF packet
-                return EOFPacket(data: remaining, serverCapabilities: capabilities)
+                return .success(EOFPacket(data: remaining, serverCapabilities: capabilities))
             } else if responseFlag == MySQL.Constants.err {
                 // Properly formatted error packet
-                throw ServerError(data: remaining, capabilities: capabilities)
+                return .failure(ServerError(data: remaining, capabilities: capabilities))
             } else { // Unknown response
-                throw ServerError.unknown(with: capabilities)
+                return .failure(ServerError.unknown(with: capabilities))
             }
         }
     }

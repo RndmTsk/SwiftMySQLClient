@@ -13,7 +13,7 @@ public extension MySQL {
         public let template: String
         public private(set) var statementID = [UInt8]()
         public private(set) var parameterCount = 0
-        public private(set) var values = [UInt8LSBArrayMappable]()
+        public private(set) var values = [Any]()
         public private(set) var columns = [Column]()
 
         internal private(set) var usingNewValues = false
@@ -24,78 +24,86 @@ public extension MySQL {
             self.template = template
             self.connection = connection
 
-            try self.prepare()
+            if let error = self.prepare() {
+                throw error
+            }
         }
 
-        internal mutating func prepare() throws {
+        internal mutating func prepare() -> Error? {
             guard let connection = connection else {
-                throw ClientError.noConnection
+                return ClientError.noConnection
             }
-            try connection.issue(.stmtPrepare, with: template)
-            let commandResponse = try connection.receiveCommandResponse()
-            guard let additionalPackets = commandResponse.additionalPackets else {
-                throw ClientError.receivedNoResponse // TODO: (TL) New error type
+            if let error = connection.issue(.stmtPrepare, with: template) {
+                return error
             }
-            let response = try PreparedStatementResponse(firstPacket: commandResponse.firstPacket, additionalPackets: additionalPackets)
-            print("[PREPARED STATEMENT] \(response)")
-            statementID = response.statementID
-            parameterCount = response.parameterCount
-            columns = response.columns
+            switch connection.receivePreparedStatementResponse() {
+            case .failure(let error):
+                return error
+            case .success(let response):
+                // TODO: (TL) WIP
+                print("[PREPARED STATEMENT] \(response)")
+                statementID = response.statementID
+                parameterCount = response.parameterCount
+                columns = response.columns
+            }
+            return nil
         }
 
         // .stmtFetch ??
         // .stmtSendLongData ??
 
-        public mutating func reExecute() throws -> ResultSet {
+        public mutating func reExecute() -> Result<ResultSet> {
             usingNewValues = false
-            return try execute()
+            return execute()
         }
 
-        public mutating func execute(with values: [UInt8LSBArrayMappable]) throws -> ResultSet {
+        public mutating func execute(with values: [Any]) -> Result<ResultSet> {
             self.usingNewValues = true
             self.values = values
-            return try execute()
+            return execute()
         }
 
-        private func execute() throws -> ResultSet {
+        private func execute() -> Result<ResultSet> {
             guard let connection = connection else {
-                throw ClientError.noConnection
+                return .failure(ClientError.noConnection)
             }
             guard parameterCount == values.count else {
-                throw ClientError.receivedNoResponse // TODO: (TL) New error type
+                // TODO: (TL) New error type
+                return .failure(ClientError.receivedNoResponse)
             }
-            try connection.issue(self)
-            let commandResponse = try connection.receiveCommandResponse()
-            guard let additionalPackets = commandResponse.additionalPackets else {
-                return try connection.basicResponse(from: commandResponse.firstPacket)
+            if let error = connection.issue(self) {
+                return .failure(error)
             }
-            return try connection.response(from: commandResponse.firstPacket, with: additionalPackets)
+            return connection.receiveCommandResponse()
         }
 
-        public func reset() throws {
-            let resultSet = try issueSimpleCommand(.stmtReset)
+        public func reset() -> Result<ResultSet> {
+            let resultSet = issueSimpleCommand(.stmtReset)
             print("[PREPARED STATEMENT] \(resultSet)")
+            return resultSet
         }
 
-        public func close() throws {
-            let resultSet = try issueSimpleCommand(.stmtClose)
+        public func close() -> Result<ResultSet> {
+            let resultSet = issueSimpleCommand(.stmtClose)
             print("[PREPARED STATEMENT] \(resultSet)")
+            return resultSet
         }
 
-        private func issueSimpleCommand(_ command: Command) throws -> ResultSet {
+        private func issueSimpleCommand(_ command: Command) -> Result<ResultSet> {
             guard let connection = connection else {
-                throw ClientError.noConnection
+                return .failure(ClientError.noConnection)
             }
-            try connection.issue(command)
-            let commandResponse = try connection.receiveCommandResponse()
-            return try connection.basicResponse(from: commandResponse.firstPacket)
+            if let error = connection.issue(command) {
+                return .failure(error)
+            }
+            return connection.receiveCommandResponse()
         }
 
         internal func columnType(for index: Int) -> ColumnType? {
             guard index < columns.count else {
                 return nil
             }
-            return columns[index + 1].columnType // TODO: (TL) ? is a column somehow?
+            return columns[index + 1].columnType // TODO: (TL) '?' is a column somehow?
         }
     }
 }

@@ -19,11 +19,11 @@ public extension MySQL {
             self.connection = connection
         }
 
-        public func execute() throws -> ResultSet {
+        public func execute() -> Result<ResultSet> {
             guard let connection = connection else {
-                throw ClientError.noConnection
+                return .failure(ClientError.noConnection)
             }
-            return try connection.query(query)
+            return connection.query(query)
         }
     }
 }
