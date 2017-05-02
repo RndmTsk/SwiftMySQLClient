@@ -103,7 +103,7 @@ public extension MySQL {
             guard index < columns.count else {
                 return nil
             }
-            return columns[index + 1].columnType // TODO: (TL) '?' is a column somehow?
+            return columns[index].columnType
         }
     }
 }

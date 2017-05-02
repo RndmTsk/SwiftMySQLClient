@@ -18,6 +18,7 @@ public extension MySQL {
         // MARK: - Constants
         private struct Constants {
             static let headerSize = 4
+            static let unsignedMarker = UInt8.max // TODO: (TL) Move this constant
         }
 
         // MARK: - Enums
@@ -267,6 +268,15 @@ public extension MySQL {
                         guard let columnType = preparedStatement.columnType(for: index) else {
                             return ClientError.invalidHandshake // TODO: (TL) New error type for prepared statement column index
                         }
+                        /*
+                         It sends the values for the placeholders of the prepared statement (if it contained any) in Binary Protocol Value form. The type of each parameter is made up of two bytes:
+                         
+                         the type as in Protocol::ColumnType
+                         
+                         a flag byte which has the highest bit set if the type is unsigned [80]
+                         */
+
+                        fieldKeys.append(/* TODO: (TL) columnType.isUnsigned ? */ Constants.unsignedMarker /* : 0 */ )
                         fieldKeys.append(columnType.rawValue)
                         fieldValues.append(contentsOf: representedValue.asUInt8Array)
                     }
@@ -351,10 +361,10 @@ public extension MySQL {
 
             // 1. Verify how many packets were received
             guard packets.count > 1 else {
-                return response(from: firstPacket,
-                                with: packets[1..<packets.count])
+                return basicResponse(from: firstPacket)
             }
-            return basicResponse(from: firstPacket)
+            return response(from: firstPacket,
+                            with: packets[1..<packets.count])
         }
 
         internal func receivePreparedStatementResponse() -> Result<PreparedStatementResponse> {
