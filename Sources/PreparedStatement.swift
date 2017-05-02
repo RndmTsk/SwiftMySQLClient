@@ -10,6 +10,10 @@ import Foundation
 
 public extension MySQL {
     public struct PreparedStatement {
+        private struct Constants {
+            static let unsignedMarker: UInt8 = 0x80
+        }
+
         public let template: String
         public private(set) var statementID = [UInt8]()
         public private(set) var parameterCount = 0
@@ -99,11 +103,19 @@ public extension MySQL {
             return connection.receiveCommandResponse()
         }
 
-        internal func columnType(for index: Int) -> ColumnType? {
+        internal func columnData(for index: Int) -> [UInt8]? {
             guard index < columns.count else {
                 return nil
             }
-            return columns[index].columnType
+            /*
+             It sends the values for the placeholders of the prepared statement (if it contained any) in Binary Protocol Value form. The type of each parameter is made up of two bytes:
+             
+             the type as in Protocol::ColumnType
+             
+             a flag byte which has the highest bit set if the type is unsigned [80]
+             */
+            let firstByte = columns[index].flags.contains(.unsigned) ? Constants.unsignedMarker : 0
+            return [firstByte, columns[index].columnType.rawValue]
         }
     }
 }

@@ -1,5 +1,5 @@
 //
-//  ColumnPacket.swift
+//  Column.swift
 //  SwiftMySQLClient
 //
 //  Created by Terry Latanville on 2017-04-04.
@@ -20,7 +20,7 @@ extension MySQL {
         public let characterSet: Int
         public let columnLength: Int
         public let columnType: ColumnType
-        public let flags: Int // TODO: (TL) Map to one of our OptionSets
+        public let flags: FieldFlag
         public let decimals: Int
         public let length: Int
 
@@ -68,7 +68,8 @@ extension MySQL {
             self.columnType = ColumnType(rawValue: UInt8(remaining.removingInt(of: 1)))
 
             // Flags
-            self.flags = remaining.removingInt(of: 2)
+            let flags = remaining.removingInt(of: 2)
+            self.flags = FieldFlag(rawValue: UInt16(flags & 0xff))
 
             // Decimals ??
             self.decimals = remaining.removingInt(of: 1)

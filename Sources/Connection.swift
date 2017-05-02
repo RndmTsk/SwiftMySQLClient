@@ -18,7 +18,6 @@ public extension MySQL {
         // MARK: - Constants
         private struct Constants {
             static let headerSize = 4
-            static let unsignedMarker = UInt8.max // TODO: (TL) Move this constant
         }
 
         // MARK: - Enums
@@ -223,9 +222,7 @@ public extension MySQL {
          n value of each parameter
          
          *** NOTE ***
-         // Binary Protocol ResultSet Row, num-fields and field-pos offset == 2
          // COM_STMT_EXECUTE, num-fields, field-pos offset == 0
-         NULL-bitmap-bytes = (num-fields + 7 + offset) / 8
          To store a NULL bit in the bitmap, you need to calculate the bitmap-byte (starting with 0) and the bitpos (starting with 0) in that byte from the field-index (starting with 0):
          NULL-bitmap-byte = ((field-pos + offset) / 8)
          NULL-bitmap-bit  = ((field-pos + offset) % 8)
@@ -263,22 +260,13 @@ public extension MySQL {
 
                     // TODO: (TL) turn into NULL-bitmap and parameters
                     if value is NSNull || (value is String && (value as! String).lowercased() == "null") {
-                        nullBitMap[0] |= 1 // <<
+                        nullBitMap[(index / 8)] |= UInt8(1 << (index % 8) & 0xff)
                     } else {
-                        guard let columnType = preparedStatement.columnType(for: index) else {
+                        guard let columnData = preparedStatement.columnData(for: index) else {
                             return ClientError.invalidHandshake // TODO: (TL) New error type for prepared statement column index
                         }
-                        /*
-                         It sends the values for the placeholders of the prepared statement (if it contained any) in Binary Protocol Value form. The type of each parameter is made up of two bytes:
-                         
-                         the type as in Protocol::ColumnType
-                         
-                         a flag byte which has the highest bit set if the type is unsigned [80]
-                         */
-
-                        fieldKeys.append(/* TODO: (TL) columnType.isUnsigned ? */ Constants.unsignedMarker /* : 0 */ )
-                        fieldKeys.append(columnType.rawValue)
-                        fieldValues.append(contentsOf: representedValue.asUInt8Array)
+                        fieldKeys.append(contentsOf: columnData)
+                        fieldValues.append(contentsOf: [1, 0]) // TODO: (TL) representedValue by columnData type
                     }
                 }
             }
