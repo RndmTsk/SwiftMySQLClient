@@ -9,19 +9,46 @@
 import Foundation
 
 public extension MySQL {
-    public struct Statement {
-        public let query: String
-
+    public struct Statement: CustomStringConvertible {
+        private struct Constants {
+            static let placeholder = "?"
+        }
+        private let queryComponents: [String]
+        private var lastValuesUsed: [Any]?
         weak internal var connection: Connection?
 
-        internal init(query: String, connection: Connection) {
-            self.query = query
-            self.connection = connection
+        public var description: String {
+            if queryComponents.count > 1, let lastValuesUsed = lastValuesUsed {
+                return zip(queryComponents, lastValuesUsed).reduce("") {
+                    $0.appending($1.0).appending(String(describing: $1.1))
+                }
+            }
+            return queryComponents.joined(separator: "?")
         }
 
-        public func execute() -> Result<ResultSet> {
+        internal init(query: String, connection: Connection) {
+            self.queryComponents = query.components(separatedBy: Constants.placeholder)
+            self.connection = connection
+            self.lastValuesUsed = nil
+        }
+
+        public mutating func execute(with values: [Any]? = nil) -> Result<ResultSet> {
             guard let connection = connection else {
                 return .failure(ClientError.noConnection)
+            }
+            lastValuesUsed = values
+            guard let values = values else {
+                if queryComponents.count == 1 {
+                    return connection.query(queryComponents[0]) // Simple query
+                } else {
+                    return .failure(ClientError.noConnection) // TODO: (TL) New error type (not enough parameters)
+                }
+            }
+            guard values.count == (queryComponents.count - 1) else {
+                return .failure(ClientError.noConnection) // TODO: (TL) New error type (not enough parameters)
+            }
+            let query = zip(queryComponents, values).reduce("") {
+                $0.appending($1.0).appending(String(describing: $1.1))
             }
             return connection.query(query)
         }

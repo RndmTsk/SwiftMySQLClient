@@ -36,6 +36,45 @@ class MySQLClientTests: XCTestCase {
         }
     }
 
+    func testStatement() {
+        let credentials = URLCredential(user: "snack", password: "snack", persistence: .none)
+        let configuration = MySQL.ClientConfiguration(host: "localhost", database: "snacktracker", credentials: credentials)
+        let connection = MySQL.Connection(configuration: configuration)
+        do {
+            try connection.open()
+            print("{INTEGRATION TEST} connection opened")
+            var statement = connection.createStatement(with: "SELECT * from snack where id = ?")
+            tryStatement(statement, with: [1], and: connection)
+            tryStatement(statement, with: [100], and: connection)
+
+            statement = connection.createStatement(with: "SELECT * FROM snack where price > ?")
+            tryStatement(statement, with: [50], and: connection)
+            tryStatement(statement, with: [1000], and: connection)
+            
+            print("{INTEGRATION TEST} query completed")
+            try connection.close()
+            print("{INTEGRATION TEST} connection closed")
+        } catch {
+            XCTFail("Encountered error: \(error)")
+            do {
+                try connection.close()
+            } catch {
+                XCTFail("Encountered error: \(error)")
+            }
+            return
+        }
+    }
+
+    func tryStatement(_ statement: MySQL.Statement, with values: [Any]? = nil, and connection: MySQL.Connection) {
+        var statement = statement
+        switch statement.execute(with: values) {
+        case .success(let resultSet):
+            print("[\(statement.description)] Success: \(resultSet)")
+        case .failure(let error):
+            print("[\(statement.description)] Error: \(error)")
+        }
+    }
+
     func testPreparedStatement() {
         let credentials = URLCredential(user: "snack", password: "snack", persistence: .none)
         let configuration = MySQL.ClientConfiguration(host: "localhost", database: "snacktracker", credentials: credentials)
