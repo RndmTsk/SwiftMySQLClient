@@ -10,7 +10,7 @@ class MySQLClientTests: XCTestCase {
             try connection.open()
             print("{INTEGRATION TEST} connection opened")
             tryQuery("SELECT @@version_comment", with: connection)
-            tryQuery("SELECT * FROM snack WHERE id = 1", with: connection)
+            tryQuery("SELECT * FROM snack", with: connection)
             tryQuery("INSERT INTO snack (name, description, price) VALUES ('Smarties', 'Canadas version of M&Ms', 100)", with: connection)
             tryQuery("UPDATE snack SET price = 100 where id = 1", with: connection)
             print("{INTEGRATION TEST} query completed")

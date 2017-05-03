@@ -37,12 +37,11 @@ public extension MySQL {
                 return .failure(ClientError.noConnection)
             }
             lastValuesUsed = values
+            if queryComponents.count == 1 {
+                return connection.query(queryComponents[0]) // Simple query
+            }
             guard let values = values else {
-                if queryComponents.count == 1 {
-                    return connection.query(queryComponents[0]) // Simple query
-                } else {
-                    return .failure(ClientError.noConnection) // TODO: (TL) New error type (not enough parameters)
-                }
+                return .failure(ClientError.noConnection) // TODO: (TL) New error type (not enough parameters)
             }
             guard values.count == (queryComponents.count - 1) else {
                 return .failure(ClientError.noConnection) // TODO: (TL) New error type (not enough parameters)
