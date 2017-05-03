@@ -85,9 +85,14 @@ public extension MySQL {
             self.rows = rows
 
             // 5. Compose the data once so it's easily addressable
+            // TODO: (TL) Likely can be improved
             var mappedData = [[String : String]]()
-            for (index, column) in columns.enumerated() {
-                mappedData[column.columnName] = rows[index]
+            for (rowIndex, row) in rows.enumerated() {
+                var columnData = [String : String]()
+                for (columnIndex, column) in columns.enumerated() {
+                    columnData[column.columnName] = row[columnIndex]
+                }
+                mappedData.append(columnData)
             }
             self.data = mappedData
         }
