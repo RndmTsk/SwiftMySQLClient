@@ -18,13 +18,18 @@ import Foundation
 public extension MySQL {
     public struct ResultSet: CustomStringConvertible {
         // MARK: - Constants
+        fileprivate struct Constants {
+            static let null: UInt8 = 0xfb
+        }
         internal static let empty = ResultSet()
 
         // MARK: - Properties
         public let affectedRows: Int
         public let lastInsertID: Int
         public let statementID: Int
-        private let columns: [Column]
+        public let columnNames: [String]
+        public let data: [[String : String]]
+        private let columns: [Column] // TODO: (TL) Maybe expose this?
         private let rows: [[String]] // MySQL returns all strings
 
         public var description: String {
@@ -42,7 +47,6 @@ public extension MySQL {
             for row in rows {
                 detailStrings.append(row.joined(separator: ", "))
             }
-            // TODO: (TL) Rows / Columns
             for string in detailStrings {
                 desc.append("\n    - \(string)")
             }
@@ -58,24 +62,51 @@ public extension MySQL {
             self.affectedRows = affectedRows
             self.lastInsertID = lastInsertID
             self.statementID = statementID
-            // 2. first N = column definitions, N+1..<COUNT = rows
+            // 1. first N = column definitions, N+1..<COUNT = rows
             guard columnCount > 0, packets.count >= columnCount else {
+                self.columnNames = []
                 self.columns = []
                 self.rows = []
+                self.data = []
                 return // TODO: (TL) Malformed
             }
 
-            // 3. map column definitions
+            // 2. map column definitions
             let endIndex = packets.startIndex.advanced(by: columnCount)
-            self.columns = packets[packets.startIndex..<endIndex].flatMap {
+            let columns = packets[packets.startIndex..<endIndex].flatMap {
                 ($0.body, false) // TODO: (TL) ...
             }.map(Column.init)
-            // 4. Check for EOF (if supported)
+            // 3. Check for EOF (if supported)
             let leftoverRange = endIndex..<packets.count
-            // 5. parse rows until EOF packet
-            self.rows = ResultSet.rowPackets(from: packets[leftoverRange])
+            // 4. parse rows until EOF packet
+            let rows = ResultSet.rowPackets(from: packets[leftoverRange])
+            self.columnNames = columns.flatMap { $0.columnName }
+            self.columns = columns
+            self.rows = rows
+
+            // 5. Compose the data once so it's easily addressable
+            var mappedData = [[String : String]]()
+            for (index, column) in columns.enumerated() {
+                mappedData[column.columnName] = rows[index]
+            }
+            self.data = mappedData
         }
 
+        // MARK: - Access Functions
+        public subscript(index: Int) -> [String : String] {
+            return data[index]
+        }
+
+        public subscript(columnName: String) -> [String] {
+            guard let columnIndex = columns.index(where: { $0.columnName == columnName }) else {
+                return []
+            }
+            return rows.flatMap {
+                $0[columnIndex]
+            }
+        }
+
+        // MARK: - Helper Functions
         private static func rowPackets(from leftovers: ArraySlice<Packet>) -> [[String]] {
             var rows = [[String]]()
             for packet in leftovers[leftovers.startIndex..<leftovers.endIndex] {
@@ -89,7 +120,7 @@ public extension MySQL {
 //                }
                 var row = [String]()
                 while remaining.count > 0 {
-                    if remaining[0] == 0xfb { // NULL
+                    if remaining[0] == Constants.null {
                         remaining.droppingFirst()
                         row.append("NULL")
                     } else {
