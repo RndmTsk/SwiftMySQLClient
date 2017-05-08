@@ -43,13 +43,9 @@ public extension MySQL {
             let serverCapabilities = capabilities ?? []
             self.code = remaining.removingInt(of: 2)
             if serverCapabilities.contains(.clientProtocol41) {
-                // TODO: (TL) ...
-                // string[1]	sql_state_marker	# marker of the SQL State
                 self.marker = remaining.removingString(of: 1)
-                // string[5]	sql_state	SQL State
                 self.state = remaining.removingString(of: 5)
             } else {
-                // TODO: (TL) ...
                 self.marker = ""
                 self.state = ""
             }
@@ -102,6 +98,9 @@ public extension MySQL {
         case invalidHandshake
         case receivedNoResponse
         case receivedExtraPackets
+        case unsupportedDataType
+        case invalidColumn
+        case invalidParameterList
     }
 
     public enum PacketError: Error {

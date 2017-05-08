@@ -30,7 +30,7 @@ public extension MySQL {
         public let columnNames: [String]
         public let data: [[String : String]]
         private let columns: [Column] // TODO: (TL) Maybe expose this?
-        private let rows: [[String]] // MySQL returns all strings
+        private let rows: [[String]] // TODO: (TL) MySQL returns all strings - save as Any instead?
 
         public var description: String {
             var desc = "Result Set"
@@ -68,13 +68,13 @@ public extension MySQL {
                 self.columns = []
                 self.rows = []
                 self.data = []
-                return // TODO: (TL) Malformed
+                return
             }
 
             // 2. map column definitions
             let endIndex = packets.startIndex.advanced(by: columnCount)
             let columns = packets[packets.startIndex..<endIndex].flatMap {
-                ($0.body, false) // TODO: (TL) ...
+                ($0.body, false)
             }.map(Column.init)
             // 3. Check for EOF (if supported)
             let leftoverRange = endIndex..<packets.count

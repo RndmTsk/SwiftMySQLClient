@@ -31,7 +31,7 @@ internal extension MySQL {
                 "\(statusFlags)",
                 "AUTH Plugin: \(authPluginName)"
             ]
-            for string in detailStrings { // TODO: (TL) Use reduce instead?
+            for string in detailStrings {
                 desc.append("\n    - \(string)")
             }
             return desc
@@ -66,7 +66,6 @@ internal extension MySQL {
             capabilityFlags.insert(CapabilityFlag(rawValue: UInt32(result.removingInt(of: 2) << 16)))
             self.capabilityFlags = capabilityFlags
 
-            // TODO: (TL) What do we do with this?
             // 1 byte for plugin length (non-zero if CLIENT_PLUGIN_AUTH)
             let authPluginLength = result.removingInt(of: 1)
 

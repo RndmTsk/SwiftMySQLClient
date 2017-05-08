@@ -7,11 +7,7 @@
 //
 
 import Foundation
-/* TODO: (TL) ..
-if contains(<#FLAG#>) {
-    <#ARRAY#>.append("<#STRING#>")
-}
- */
+
 public extension MySQL {
     public struct FieldFlag: OptionSet {
         // MARK: - Convenience Constants

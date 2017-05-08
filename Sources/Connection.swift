@@ -75,7 +75,7 @@ public extension MySQL {
         /**
          Attempts to open a connection to MySQL and authorize with the supplied `configuration`.
 
-         - throws: If the socket is unable to be created, if the connection fails or if authorization fails. - TODO: (TL) Use Result<T> instead?
+         - throws: If the socket is unable to be created, if the connection fails or if authorization fails.
          */
         public func open() throws {
             if socket == nil {
@@ -255,18 +255,17 @@ public extension MySQL {
             if preparedStatement.usingNewValues {
                 for (index, value) in preparedStatement.values.enumerated() {
                     guard let representedValue = value as? UInt8LSBArrayMappable else {
-                        return ClientError.noConnection // TODO: (TL) New error type for "unsupported data type"
+                        return ClientError.unsupportedDataType
                     }
-
-                    // TODO: (TL) turn into NULL-bitmap and parameters
                     if value is NSNull || (value is String && (value as! String).lowercased() == "null") {
                         nullBitMap[(index / 8)] |= UInt8(1 << (index % 8) & 0xff)
                     } else {
                         guard let columnData = preparedStatement.columnData(for: index) else {
-                            return ClientError.invalidHandshake // TODO: (TL) New error type for prepared statement column index
+                            return ClientError.invalidColumn
                         }
                         fieldKeys.append(contentsOf: columnData)
-                        fieldValues.append(contentsOf: [1, 0]) // TODO: (TL) representedValue by columnData type
+                        fieldValues.append(contentsOf: [1, 0])
+                        // TODO: (TL) representedValue by columnData type
                     }
                 }
             }
@@ -299,7 +298,7 @@ public extension MySQL {
         internal func response(from firstPacket: Packet,
                                with additionalPackets: ArraySlice<Packet>) -> Result<ResultSet> {
             guard let firstByte = firstPacket.body.first else {
-                return .failure(ClientError.receivedNoResponse) // TODO: (TL) new error (likely server?)
+                return .failure(ServerError.malformedCommandResponse())
             }
             return .success(ResultSet(packets: additionalPackets, columnCount: Int(firstByte)))
         }
@@ -363,7 +362,7 @@ public extension MySQL {
             }
             // Ensure we have more than 1 packet
             guard packets.count > 1 else {
-                return .failure(ClientError.receivedNoResponse) // TODO: (TL) New error type
+                return .failure(ServerError.malformedCommandResponse())
             }
             do {
                 let response = try PreparedStatementResponse(firstPacket: firstPacket,

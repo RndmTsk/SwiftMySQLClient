@@ -32,19 +32,18 @@ extension MySQL {
             self.warningCount = remaining.removingInt(of: 2)
 
             guard additionalPackets.count >= parameterCount + columnCount else {
-                throw ClientError.receivedNoResponse // TODO: (TL) Server error instead (at least different client error)
+                throw ServerError.malformedCommandResponse()
             }
             var endIndex = additionalPackets.startIndex.advanced(by: parameterCount)
             self.parameters = additionalPackets[additionalPackets.startIndex..<endIndex].flatMap {
-                ($0.body, false) // TODO: (TL) ...
+                ($0.body, false)
             }.map(Column.init)
             let columnStartIndex = additionalPackets.startIndex.advanced(by: endIndex - additionalPackets.startIndex)
             endIndex = endIndex.advanced(by: columnCount)
             self.columns = additionalPackets[columnStartIndex..<endIndex].flatMap {
-                ($0.body, false) // TODO: (TL) ...
+                ($0.body, false)
             }.map(Column.init)
             print("[PreparedStatementResponse] \(additionalPackets.count - endIndex) packets left.")
-            // TODO: (TL) Is there more stuff - EOF maybe?
         }
     }
 }

@@ -44,8 +44,6 @@ public extension MySQL {
             case .failure(let error):
                 return error
             case .success(let response):
-                // TODO: (TL) WIP
-                print("[PREPARED STATEMENT] \(response)")
                 statementID = response.statementID
                 parameterCount = response.parameterCount
                 columns = response.columns
@@ -72,8 +70,7 @@ public extension MySQL {
                 return .failure(ClientError.noConnection)
             }
             guard parameterCount == values.count else {
-                // TODO: (TL) New error type
-                return .failure(ClientError.receivedNoResponse)
+                return .failure(ClientError.invalidParameterList)
             }
             if let error = connection.issue(self) {
                 return .failure(error)
@@ -82,15 +79,11 @@ public extension MySQL {
         }
 
         public func reset() -> Result<ResultSet> {
-            let resultSet = issueSimpleCommand(.stmtReset)
-            print("[PREPARED STATEMENT] \(resultSet)")
-            return resultSet
+            return issueSimpleCommand(.stmtReset)
         }
 
         public func close() -> Result<ResultSet> {
-            let resultSet = issueSimpleCommand(.stmtClose)
-            print("[PREPARED STATEMENT] \(resultSet)")
-            return resultSet
+            return issueSimpleCommand(.stmtClose)
         }
 
         private func issueSimpleCommand(_ command: Command) -> Result<ResultSet> {

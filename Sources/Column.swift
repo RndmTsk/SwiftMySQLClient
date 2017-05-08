@@ -22,13 +22,13 @@ extension MySQL {
         public let columnType: ColumnType
         public let flags: FieldFlag
         public let decimals: Int
+        public let defaultValues: String
         public let length: Int
 
         public var description: String {
-            return "    CATALOG: \(catalog)\n    SCHEMA: \(schema)\n    TABLE: \(table)\n    ORIGINAL TABLE: \(originalTable)\n    COLUMN NAME: \(columnName)\n    ORIGINAL COLUMN NAME: \(originalColumnName)\n    CHARACTER SET: \(characterSet)\n    COLUMN LENGTH: \(columnLength)\n     DATA TYPE: \(columnType)\n    FLAGS: \(flags)\n    DECIMALS: \(decimals)\n    LENGTH: \(length)"
+            return "    CATALOG: \(catalog)\n    SCHEMA: \(schema)\n    TABLE: \(table)\n    ORIGINAL TABLE: \(originalTable)\n    COLUMN NAME: \(columnName)\n    ORIGINAL COLUMN NAME: \(originalColumnName)\n    CHARACTER SET: \(characterSet)\n    COLUMN LENGTH: \(columnLength)\n     DATA TYPE: \(columnType)\n    FLAGS: \(flags)\n    DECIMALS: \(decimals)\n    DEFAULT VALUES: \(defaultValues)    LENGTH: \(length)"
         }
 
-        // TODO: (TL) Clean this up a little
         init(data: Data, commandWasFieldList: Bool = false) {
             var remaining = data
             // Catalog
@@ -61,7 +61,7 @@ extension MySQL {
             // Character Set
             self.characterSet = remaining.removingInt(of: 2)
 
-            // Column Length - TODO: (TL) ??
+            // Column Length - TODO: (TL) What is this used for - byte count?
             self.columnLength = remaining.removingInt(of: 4)
 
             // Column Type
@@ -76,12 +76,12 @@ extension MySQL {
 
             _ = remaining.removingInt(of: 2) // 2 bytes of filler [0, 0]
 
-            /* TODO: (TL) ...
-            if command was COM_FIELD_LIST {
-                lenenc_int length of default-values
-                string[$len] default values
+            if commandWasFieldList {
+                let defaultValuesLength = remaining.removingLenencInt()
+                self.defaultValues = remaining.removingString(of: defaultValuesLength)
+            } else {
+                self.defaultValues = ""
             }
-             */
             self.length = data.count - remaining.count
         }
     }

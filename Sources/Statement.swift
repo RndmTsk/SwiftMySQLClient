@@ -40,11 +40,9 @@ public extension MySQL {
             if queryComponents.count == 1 {
                 return connection.query(queryComponents[0]) // Simple query
             }
-            guard let values = values else {
-                return .failure(ClientError.noConnection) // TODO: (TL) New error type (not enough parameters)
-            }
-            guard values.count == (queryComponents.count - 1) else {
-                return .failure(ClientError.noConnection) // TODO: (TL) New error type (not enough parameters)
+            guard let values = values,
+                values.count == (queryComponents.count - 1) else {
+                return .failure(ClientError.invalidParameterList)
             }
             let query = zip(queryComponents, values).reduce("") {
                 $0.appending($1.0).appending(String(describing: $1.1))

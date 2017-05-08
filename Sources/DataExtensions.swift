@@ -149,7 +149,7 @@ public extension Data {
             return 0
         }
         guard length < MemoryLayout<Int>.size else {
-            return 0 // TODO: (TL) error? (too long)
+            return 0
         }
         var result = 0
         for offset in 0..<length {
@@ -163,14 +163,14 @@ public extension Data {
         guard offsetStart < count,
             offsetEnd < count,
             offsetStart < offsetEnd else {
-            return 0 // TODO: (TL) error? (too long)
+            return 0
         }
         return subdata(in: offsetStart..<offsetEnd).int(of: length)
     }
 
     public var uInt16: UInt16 {
         guard let firstByte = self.first else {
-            return 0 // TODO: (TL) Throw?
+            return 0
         }
         if count == 1 {
             return UInt16(firstByte)

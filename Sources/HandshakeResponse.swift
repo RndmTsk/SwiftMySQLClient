@@ -14,7 +14,6 @@ public extension MySQL {
         let data: Data
 
         init(handshake: Handshake, configuration: ClientConfiguration) {
-            // TODO: (TL) Dynamic capabilities via plugins?
             // Capabilities (4 bytes)
             var rawData = MySQL.lsbEncoded(configuration.capabilities.rawValue)
             // Max packet size (4 bytes)
