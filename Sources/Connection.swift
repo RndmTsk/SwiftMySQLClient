@@ -265,7 +265,7 @@ public extension MySQL {
                         }
                         fieldKeys.append(contentsOf: columnData)
                         fieldValues.append(contentsOf: [1, 0])
-                        // TODO: (TL) representedValue by columnData type
+                        // TODO: (TL) representedValue by columnData type (including restricting to proper size)
                     }
                 }
             }
