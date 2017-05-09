@@ -8,13 +8,6 @@
 
 import Foundation
 
-/* TODO: (TL):
-    - Addressing via [COLUMN_NAME][ROW_ID]
-    - Addressing via [COLUMN_NAME] to get full column
-    - Addressing via [ROW_ID] to get full row
-    - Metadata including # rows, last insert ID
- */
-
 public extension MySQL {
     public struct ResultSet: CustomStringConvertible {
         // MARK: - Constants
@@ -30,7 +23,7 @@ public extension MySQL {
         public let columnNames: [String]
         public let data: [[String : String]]
         private let columns: [Column] // TODO: (TL) Maybe expose this?
-        private let rows: [[String]] // TODO: (TL) MySQL returns all strings - save as Any instead?
+        private let rows: [[String]]
 
         public var description: String {
             var desc = "Result Set"
@@ -83,11 +76,12 @@ public extension MySQL {
             self.columnNames = columns.flatMap { $0.columnName }
             self.columns = columns
             self.rows = rows
+            // TODO: (TL) Map each piece of row data to the appropriate data type
 
             // 5. Compose the data once so it's easily addressable
             // TODO: (TL) Likely can be improved
             var mappedData = [[String : String]]()
-            for (rowIndex, row) in rows.enumerated() {
+            for row in rows {
                 var columnData = [String : String]()
                 for (columnIndex, column) in columns.enumerated() {
                     columnData[column.columnName] = row[columnIndex]

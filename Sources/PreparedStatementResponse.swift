@@ -14,13 +14,13 @@ extension MySQL {
         let columnCount: Int
         let parameterCount: Int
         let warningCount: Int
-        let parameters: [Column] // TODO: (TL) Likely it's own data structure
+        let parameters: [Column]
         let columns: [Column]
         init(firstPacket: Packet, additionalPackets: ArraySlice<Packet>) throws {
             var remaining = firstPacket.body
             let status = remaining.removingInt(of: 1)
             guard status == 0 else {
-                throw ServerError(data: remaining, capabilities: []) // TODO: (TL)
+                throw ServerError(data: remaining, capabilities: [])
             }
             // Since we pass it back, might as well not manipulate it every time
             self.statementID = remaining.removingFirstBytes(4)

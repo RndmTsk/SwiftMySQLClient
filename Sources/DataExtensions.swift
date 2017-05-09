@@ -115,17 +115,19 @@ public extension Data {
         let length: Int
         if typeFlag < 0xfb { // 1-byte integer
             length = 1
+        } else if typeFlag == 0xfb { // NULL
+            return (0, self)
         } else if typeFlag == 0xfc { // 2-byte integer
             length = 2
         } else if typeFlag == 0xfd { // 3-byte integer
             length = 3
         } else if typeFlag == 0xfe { // 8-byte integer
             length = 8
+        } else if typeFlag == 0xff { // ERROR
+            return (0, self)
         } else {
             length = 0
         }
-        // TODO: (TL) handle 0xfb (NULL) and 0xff (ERROR)
-        
         return (int(of: length), subdata(in: length..<count))
     }
 

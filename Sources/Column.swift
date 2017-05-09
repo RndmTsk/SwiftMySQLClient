@@ -61,7 +61,7 @@ extension MySQL {
             // Character Set
             self.characterSet = remaining.removingInt(of: 2)
 
-            // Column Length - TODO: (TL) What is this used for - byte count?
+            // Column Length - TODO: (TL)? What is this used for - byte count?
             self.columnLength = remaining.removingInt(of: 4)
 
             // Column Type

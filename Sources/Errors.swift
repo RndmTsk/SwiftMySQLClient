@@ -21,6 +21,12 @@ public extension MySQL {
             static let invalidSequenceNumberMessage = "Received a packet out of order."
             static let malformedCommand = 3
             static let malformedCommandMessage = "Command response packet was malformed."
+            static let malformedHandshake = 4
+            static let malformedHandshakeMessage = "Handshake was malformed."
+            static let incorrectHandshakeResponse = 5
+            static let incorrectHandshakeResponseMessage = "Received incorrect number of command packets."
+            static let incorrectCommandResponse = 6
+            static let incorrectCommandResponseMessage = "Received incorrect number of command packets."
         }
 
         public let code: Int
@@ -90,6 +96,30 @@ public extension MySQL {
                                marker: Constants.standardMarker,
                                state: String(Constants.malformedCommand),
                                message: Constants.malformedCommandMessage)
+        }
+
+        public static func malformedHandshake(with capabilities: CapabilityFlag? = nil) -> ServerError {
+            return ServerError(capabilities: capabilities,
+                               code: Constants.malformedHandshake,
+                               marker: Constants.standardMarker,
+                               state: String(Constants.malformedHandshake),
+                               message: Constants.malformedHandshakeMessage)
+        }
+
+        public static func incorrectHandshakeResponse(with capabilities: CapabilityFlag? = nil) -> ServerError {
+            return ServerError(capabilities: capabilities,
+                               code: Constants.incorrectHandshakeResponse,
+                               marker: Constants.standardMarker,
+                               state: String(Constants.incorrectHandshakeResponse),
+                               message: Constants.incorrectHandshakeResponseMessage)
+        }
+
+        public static func incorrectCommandResponse(with capabilities: CapabilityFlag? = nil) -> ServerError {
+            return ServerError(capabilities: capabilities,
+                               code: Constants.incorrectCommandResponse,
+                               marker: Constants.standardMarker,
+                               state: String(Constants.incorrectCommandResponse),
+                               message: Constants.incorrectCommandResponseMessage)
         }
     }
 

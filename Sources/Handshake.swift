@@ -10,7 +10,6 @@ import Foundation
 
 internal extension MySQL {
     // https://dev.mysql.com/doc/internals/en/connection-phase-packets.html#packet-Protocol::Handshake
-    // TODO: (TL) Protocol to allow for different versions
     internal struct Handshake: CustomStringConvertible {
         let protocolVersion: Int
         let serverVersion: String
@@ -90,6 +89,8 @@ internal extension MySQL {
             } else {
                 self.authPluginName = ""
             }
+
+            // TODO: (TL) Self sanity check
         }
     }
 }

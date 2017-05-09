@@ -10,11 +10,19 @@ import Foundation
 
 public extension MySQL {
     public struct PreparedStatement {
+        public enum Cursor: UInt8 {
+            case none        = 0x00
+            case readOnly    = 0x01
+            case update      = 0x02
+            case scrollable  = 0x04
+        }
+
         private struct Constants {
             static let unsignedMarker: UInt8 = 0x80
         }
 
         public let template: String
+        public let cursorType: Cursor
         public private(set) var statementID = [UInt8]()
         public private(set) var parameterCount = 0
         public private(set) var values = [Any]()
@@ -24,9 +32,10 @@ public extension MySQL {
 
         weak internal var connection: Connection?
 
-        internal init(template: String, connection: Connection) throws {
+        internal init(template: String, connection: Connection, cursorType: Cursor) throws {
             self.template = template
             self.connection = connection
+            self.cursorType = cursorType
 
             if let error = self.prepare() {
                 throw error

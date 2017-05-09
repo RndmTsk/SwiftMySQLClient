@@ -131,9 +131,9 @@ public extension MySQL {
             return Statement(query: query, connection: self)
         }
 
-        public func prepareStatement(with query: String) -> Result<PreparedStatement> {
+        public func prepareStatement(with query: String, cursor: PreparedStatement.Cursor = .none) -> Result<PreparedStatement> {
             do {
-                let preparedStatement = try PreparedStatement(template: query, connection: self)
+                let preparedStatement = try PreparedStatement(template: query, connection: self, cursorType: cursor)
                 return .success(preparedStatement)
             } catch {
                 return .failure(error)
@@ -150,7 +150,8 @@ public extension MySQL {
          */
         private func connect() throws {
             guard let socket = socket else {
-                throw ClientError.noConnection // TODO: (TL) Manage state for these
+                state = .disconnected
+                throw ClientError.noConnection
             }
             state = .connecting
             try socket.connect(to: configuration.host, port: configuration.port)
@@ -168,9 +169,9 @@ public extension MySQL {
             guard let authPackets = result.value,
                 let handshakePacket = authPackets.first,
                 authPackets.count == 1 else {
-                throw result.error ?? ClientError.receivedExtraPackets // TODO: (TL) is this actually an error??
+                    try close()
+                    throw result.error ?? ServerError.incorrectHandshakeResponse()
             }
-            // TODO: (TL) Check packet type
             guard let handshake = Handshake(data: handshakePacket.body)  else {
                 throw ClientError.invalidHandshake
             }
@@ -182,12 +183,11 @@ public extension MySQL {
                 throw writeError
             }
 
-            // TODO: (TL) Verify sequence number
             result = receive()
             guard let packets = result.value,
                 let commandPacket = packets.first,
                 packets.count == 1 else {
-                throw result.error ?? ClientError.receivedExtraPackets
+                throw result.error ?? ServerError.incorrectCommandResponse()
             }
             let parseResult = parseCommandResponse(from: commandPacket.body, with: handshake.capabilityFlags)
             if let parseError = parseResult.error {
@@ -245,7 +245,7 @@ public extension MySQL {
 
             var bytes: [UInt8] = [Command.stmtExecute.rawValue]
             bytes.append(contentsOf: preparedStatement.statementID)
-            bytes.append(0) // TODO: (TL) Specify cursor type in creation?
+            bytes.append(preparedStatement.cursorType.rawValue)
             bytes.append(contentsOf: [1, 0, 0, 0])
 
             let mapSize = (preparedStatement.parameterCount + 7) / 8
@@ -313,15 +313,16 @@ public extension MySQL {
          - throws: Any socket error encountered during the read process, any packet creation error if invalid data is received.
          */
         private func receive() -> Result<[Packet]> {
-            // TODO: (TL) Add logging of bytes read in DEBUG MODE
             // TODO: (TL) see if we need to read more
             // TODO: (TL) Verify sequence numbers
             guard let socket = socket else {
-                return .failure(ClientError.noConnection) // TODO: (TL) Manage state for these
+                state = .disconnected
+                return .failure(ClientError.noConnection)
             }
             var data = Data(capacity: Constants.headerSize)
             do {
-                _ = try socket.read(into: &data)
+                let bytesRead = try socket.read(into: &data)
+                print("Read \(bytesRead) bytes")
                 return .success(try chunk(data))
             } catch {
                 return .failure(error)
@@ -382,12 +383,12 @@ public extension MySQL {
          */
         private func write(_ data: Data, _ incrementSequenceNumber: Bool = true) -> Error? {
             guard let socket = socket else {
-                return ClientError.noConnection // TODO: (TL) Manage state for these
+                state = .disconnected
+                return ClientError.noConnection
             }
             if incrementSequenceNumber {
                 sequenceNumber = (sequenceNumber + 1) % UInt8.max
             }
-            // TODO: (TL) This needs to be accounted for by what we've received from the server as well.
             let encodedLength = MySQL.lsbEncoded(data.count, to: 3)
 
             // Construct the packet:
@@ -402,7 +403,6 @@ public extension MySQL {
             } catch {
                 return error
             }
-            // TODO: (TL) Add logging of bytes read in DEBUG MODE
             print("[#\(sequenceNumber)]{WRITE} \(data.count) bytes")
             return nil
         }
