@@ -38,6 +38,9 @@ public extension MySQL {
 
         // MARK: - Properties
 
+        /// A global account of server capabilities - useful when constructing errors
+        internal static var serverCapabilities: CapabilityFlag = []
+
         /// The `State` of this connection.
         var state: State
 
@@ -170,11 +173,12 @@ public extension MySQL {
                 let handshakePacket = authPackets.first,
                 authPackets.count == 1 else {
                     try close()
-                    throw result.error ?? ServerError.incorrectHandshakeResponse()
+                    throw result.error ?? ServerError.incorrectHandshakeResponseSize
             }
             guard let handshake = Handshake(data: handshakePacket.body)  else {
                 throw ClientError.invalidHandshake
             }
+            Connection.serverCapabilities = handshake.capabilityFlags
             print("    \(handshake)")
             self.handshake = handshake
             let handshakeResponse = HandshakeResponse(handshake: handshake, configuration: configuration)
@@ -187,9 +191,9 @@ public extension MySQL {
             guard let packets = result.value,
                 let commandPacket = packets.first,
                 packets.count == 1 else {
-                throw result.error ?? ServerError.incorrectCommandResponse()
+                throw result.error ?? ServerError.incorrectCommandResponseSize
             }
-            let parseResult = parseCommandResponse(from: commandPacket.body, with: handshake.capabilityFlags)
+            let parseResult = parseCommandResponse(from: commandPacket.body)
             if let parseError = parseResult.error {
                 throw parseError
             }
@@ -283,8 +287,7 @@ public extension MySQL {
 
         // MARK: - Command Response
         internal func basicResponse(from packet: Packet) -> Result<ResultSet> {
-            let commandResponse = parseCommandResponse(from: packet.body,
-                                                       with: handshake?.capabilityFlags)
+            let commandResponse = parseCommandResponse(from: packet.body)
             if let okPacket = commandResponse.value as? OKPacket {
                 let resultSet = ResultSet(affectedRows: okPacket.affectedRows, lastInsertID: okPacket.lastInsertID)
                 return .success(resultSet)
@@ -298,7 +301,7 @@ public extension MySQL {
         internal func response(from firstPacket: Packet,
                                with additionalPackets: ArraySlice<Packet>) -> Result<ResultSet> {
             guard let firstByte = firstPacket.body.first else {
-                return .failure(ServerError.malformedCommandResponse())
+                return .failure(ServerError.malformedCommandResponse)
             }
             return .success(ResultSet(packets: additionalPackets, columnCount: Int(firstByte)))
         }
@@ -363,7 +366,7 @@ public extension MySQL {
             }
             // Ensure we have more than 1 packet
             guard packets.count > 1 else {
-                return .failure(ServerError.malformedCommandResponse())
+                return .failure(ServerError.malformedCommandResponse)
             }
             do {
                 let response = try PreparedStatementResponse(firstPacket: firstPacket,
@@ -413,23 +416,23 @@ public extension MySQL {
          - parameter data: The raw data received from the socket.
          - throws: Any errors encountered in constructing the packet response, any errors parsed from the server.
          */
-        private func parseCommandResponse(from data: Data, with capabilities: CapabilityFlag? = nil) -> Result<CommandPacket> {
+        private func parseCommandResponse(from data: Data) -> Result<CommandPacket> {
             guard let responseFlag = data.first else {
-                return .failure(ServerError.emptyResponse(with: capabilities))
+                return .failure(ServerError.emptyResponse)
             }
             let remaining = data.subdata(in: 1..<data.count)
             if responseFlag == MySQL.Constants.ok
                 && data.count >= MySQL.Constants.okResponseMinLength {
-                return .success(OKPacket(data: remaining, serverCapabilities: capabilities))
+                return .success(OKPacket(data: remaining))
             } else if responseFlag == MySQL.Constants.eof
                 && data.count < MySQL.Constants.eofResponseMaxLength {
                 // Properly formatted EOF packet
-                return .success(EOFPacket(data: remaining, serverCapabilities: capabilities))
+                return .success(EOFPacket(data: remaining))
             } else if responseFlag == MySQL.Constants.err {
                 // Properly formatted error packet
-                return .failure(ServerError(data: remaining, capabilities: capabilities))
+                return .failure(ServerError(data: remaining))
             } else { // Unknown response
-                return .failure(ServerError.unknown(with: capabilities))
+                return .failure(ServerError.unknown)
             }
         }
     }

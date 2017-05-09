@@ -20,7 +20,7 @@ extension MySQL {
             var remaining = firstPacket.body
             let status = remaining.removingInt(of: 1)
             guard status == 0 else {
-                throw ServerError(data: remaining, capabilities: [])
+                throw ServerError(data: remaining)
             }
             // Since we pass it back, might as well not manipulate it every time
             self.statementID = remaining.removingFirstBytes(4)
@@ -32,7 +32,7 @@ extension MySQL {
             self.warningCount = remaining.removingInt(of: 2)
 
             guard additionalPackets.count >= parameterCount + columnCount else {
-                throw ServerError.malformedCommandResponse()
+                throw ServerError.malformedCommandResponse
             }
             var endIndex = additionalPackets.startIndex.advanced(by: parameterCount)
             self.parameters = additionalPackets[additionalPackets.startIndex..<endIndex].flatMap {

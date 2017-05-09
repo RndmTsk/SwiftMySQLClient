@@ -13,20 +13,7 @@ public extension MySQL {
     public struct ServerError: Error, CustomStringConvertible {
         private struct Constants {
             static let standardMarker = "#"
-            static let emptyResponse = 0
-            static let emtpyMessage = "Response length was zero, no data was received."
-            static let unknown = 1
-            static let unknownMessage = "An unknown error occurred attempting to receive data from the server."
-            static let invalidSequenceNumber = 2
-            static let invalidSequenceNumberMessage = "Received a packet out of order."
-            static let malformedCommand = 3
-            static let malformedCommandMessage = "Command response packet was malformed."
-            static let malformedHandshake = 4
-            static let malformedHandshakeMessage = "Handshake was malformed."
-            static let incorrectHandshakeResponse = 5
-            static let incorrectHandshakeResponseMessage = "Received incorrect number of command packets."
-            static let incorrectCommandResponse = 6
-            static let incorrectCommandResponseMessage = "Received incorrect number of command packets."
+            static let unknownErrorMessage = "An unknown error occurred attempting to receive data from the server."
         }
 
         public let code: Int
@@ -34,6 +21,58 @@ public extension MySQL {
         public let state: String
         public let message: String
  
+        public static var unknown: ServerError {
+            return ServerError()
+        }
+        
+        public static var emptyResponse: ServerError {
+            let errorCode = 1
+            return ServerError(code: errorCode,
+                               marker: Constants.standardMarker,
+                               state: String(errorCode),
+                               message: "Response length was zero, no data was received.")
+        }
+        
+        public static var invalidSequenceNumber: ServerError {
+            let errorCode = 2
+            return ServerError(code: errorCode,
+                               marker: Constants.standardMarker,
+                               state: String(errorCode),
+                               message: "Received a packet out of order.")
+        }
+        
+        public static var malformedCommandResponse: ServerError {
+            let errorCode = 3
+            return ServerError(code: errorCode,
+                               marker: Constants.standardMarker,
+                               state: String(errorCode),
+                               message: "Command response packet was malformed.")
+        }
+
+        public static var incorrectCommandResponseSize: ServerError {
+            let errorCode = 4
+            return ServerError(code: errorCode,
+                               marker: Constants.standardMarker,
+                               state: String(errorCode),
+                               message: "Received incorrect number of command packets.")
+        }
+
+        public static var malformedHandshake: ServerError {
+            let errorCode = 5
+            return ServerError(code: errorCode,
+                               marker: Constants.standardMarker,
+                               state: String(errorCode),
+                               message: "Handshake was malformed.")
+        }
+        
+        public static var incorrectHandshakeResponseSize: ServerError {
+            let errorCode = 6
+            return ServerError(code: errorCode,
+                               marker: Constants.standardMarker,
+                               state: String(errorCode),
+                               message: "Received incorrect number of command packets.")
+        }
+
         public var description: String {
             let cp41Message: String
             if marker.isEmpty && state.isEmpty {
@@ -44,11 +83,10 @@ public extension MySQL {
             return "[MySQL Error #\(code)] \(cp41Message)\(message)"
         }
 
-        public init(data: Data, capabilities: CapabilityFlag? = nil) {
+        public init(data: Data) {
             var remaining = data
-            let serverCapabilities = capabilities ?? []
             self.code = remaining.removingInt(of: 2)
-            if serverCapabilities.contains(.clientProtocol41) {
+            if Connection.serverCapabilities.contains(.clientProtocol41) {
                 self.marker = remaining.removingString(of: 1)
                 self.state = remaining.removingString(of: 5)
             } else {
@@ -58,68 +96,14 @@ public extension MySQL {
             self.message = remaining.removingEOFEncodedString()
         }
 
-        private init(capabilities: CapabilityFlag? = nil,
-                     code: Int = Constants.unknown,
+        private init(code: Int = 0,
                      marker: String = Constants.standardMarker,
-                     state: String = String(Constants.unknown),
-                     message: String = Constants.unknownMessage) {
-            // TODO: (TL) Not using capabilities
+                     state: String = String(0),
+                     message: String = Constants.unknownErrorMessage) {
             self.code = code
             self.marker = marker
             self.state = state
             self.message = message
-        }
-
-        public static func unknown(with capabilities: CapabilityFlag? = nil) -> ServerError {
-            return ServerError(capabilities: capabilities)
-        }
-
-        public static func emptyResponse(with capabilities: CapabilityFlag? = nil) -> ServerError {
-            return ServerError(capabilities: capabilities,
-                               code: Constants.emptyResponse,
-                               marker: Constants.standardMarker,
-                               state: String(Constants.emptyResponse),
-                               message: Constants.emtpyMessage)
-        }
-
-        public static func invalidSequenceNumber(with capabilities: CapabilityFlag? = nil) -> ServerError {
-            return ServerError(capabilities: capabilities,
-                               code: Constants.invalidSequenceNumber,
-                               marker: Constants.standardMarker,
-                               state: String(Constants.invalidSequenceNumber),
-                               message: Constants.invalidSequenceNumberMessage)
-        }
-
-        public static func malformedCommandResponse(with capabilities: CapabilityFlag? = nil) -> ServerError {
-            return ServerError(capabilities: capabilities,
-                               code: Constants.malformedCommand,
-                               marker: Constants.standardMarker,
-                               state: String(Constants.malformedCommand),
-                               message: Constants.malformedCommandMessage)
-        }
-
-        public static func malformedHandshake(with capabilities: CapabilityFlag? = nil) -> ServerError {
-            return ServerError(capabilities: capabilities,
-                               code: Constants.malformedHandshake,
-                               marker: Constants.standardMarker,
-                               state: String(Constants.malformedHandshake),
-                               message: Constants.malformedHandshakeMessage)
-        }
-
-        public static func incorrectHandshakeResponse(with capabilities: CapabilityFlag? = nil) -> ServerError {
-            return ServerError(capabilities: capabilities,
-                               code: Constants.incorrectHandshakeResponse,
-                               marker: Constants.standardMarker,
-                               state: String(Constants.incorrectHandshakeResponse),
-                               message: Constants.incorrectHandshakeResponseMessage)
-        }
-
-        public static func incorrectCommandResponse(with capabilities: CapabilityFlag? = nil) -> ServerError {
-            return ServerError(capabilities: capabilities,
-                               code: Constants.incorrectCommandResponse,
-                               marker: Constants.standardMarker,
-                               state: String(Constants.incorrectCommandResponse),
-                               message: Constants.incorrectCommandResponseMessage)
         }
     }
 
