@@ -129,6 +129,10 @@ public extension MySQL {
             return query(statement)
         }
 
+        public func delete(_ statement: String) -> Result<ResultSet> {
+            return query(statement)
+        }
+
         // MARK: - Statement Functions
         public func createStatement(with query: String) -> Statement {
             return Statement(query: query, connection: self)
