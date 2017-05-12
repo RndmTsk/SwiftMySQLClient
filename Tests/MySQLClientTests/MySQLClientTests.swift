@@ -44,12 +44,12 @@ class MySQLClientTests: XCTestCase {
             try connection.open()
             print("{INTEGRATION TEST} connection opened")
             var statement = connection.createStatement(with: "SELECT * from snack where id = ?")
-            tryStatement(statement, with: [1], and: connection)
-            tryStatement(statement, with: [100], and: connection)
+            tryStatement(statement, with: [1])
+            tryStatement(statement, with: [100])
 
             statement = connection.createStatement(with: "SELECT * FROM snack where price > ?")
-            tryStatement(statement, with: [50], and: connection)
-            tryStatement(statement, with: [1000], and: connection)
+            tryStatement(statement, with: [50])
+            tryStatement(statement, with: [1000])
             
             print("{INTEGRATION TEST} query completed")
             try connection.close()
@@ -65,7 +65,7 @@ class MySQLClientTests: XCTestCase {
         }
     }
 
-    func tryStatement(_ statement: MySQL.Statement, with values: [Any]? = nil, and connection: MySQL.Connection) {
+    func tryStatement(_ statement: MySQL.Statement, with values: [Any]? = nil) {
         var statement = statement
         switch statement.execute(with: values) {
         case .success(let resultSet):
