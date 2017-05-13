@@ -44,9 +44,21 @@ public extension MySQL {
                 values.count == (queryComponents.count - 1) else {
                 return .failure(ClientError.invalidParameterList)
             }
-            let query = zip(queryComponents, values).reduce("") {
-                $0.appending($1.0).appending(String(describing: $1.1))
+            // TOOD: (TL) This breaks if the value is a table name (and possibly other things)
+            var query = ""
+            for (index, value) in values.enumerated() {
+                query.append(queryComponents[index])
+                if let stringValue = value as? String {
+                    query.append("\"\(stringValue)\"")
+                } else if let boolValue = value as? Bool {
+                    query.append(boolValue ? "1" : "0")
+                } else {
+                    query.append(String(describing: value))
+                }
+                
             }
+            query.append(queryComponents.last!) // Will always have an ending component
+
             return connection.query(query)
         }
     }
