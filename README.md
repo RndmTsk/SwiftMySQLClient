@@ -9,6 +9,8 @@ MySQL 8.0 is currently the only tested version, in theory it could work with ear
 ## Planned Features
 
 * Prepared Statement support (currently prepared statements can be created and executed, but no results are returned).
+* Transaction support
+* Result Set enumeration support
 * Result Set column data type auto-mapping
 * Connection pooling
 * Re-configuration support
@@ -111,4 +113,59 @@ let result = preparedStatement.execute(with: ["Swift"])
 ```
 
 ### Result Sets
-### Tests
+
+Each type of query returns a `Result<ResultSet>` - this allows for `success` or `failure` to be returned without the use of optionals.
+
+A `Result<ResultSet>` can be unwrapped in a few different ways:
+
+```
+// Using the connection from above:
+var statement = connection.createStatement(with: "SELECT * FROM ? WHERE name = '?'")
+let result = statement.execute(with: ["birds", "Swift"])
+
+// 1. Switch Statement
+switch result {
+	case .success(let resultSet):
+		// Handle ResultSet
+	case .failure(let error):
+		// Handle error
+}
+
+// 2. if let construction
+if let resultSet = result.value {
+	// Handle ResultSet
+} else if let error = result.error {
+	// Handle Error
+}
+
+// Other options include guard let and optional chaining.
+```
+
+Accessing a `ResultSet` can be done in a number of ways:
+```
+var statement = connection.createStatement(with: "SELECT * FROM ? WHERE name = '?'")
+let result = statement.execute(with: ["birds", "Swift"])
+guard let resultSet = result.value else {
+	// Handle error instead
+	return
+}
+
+// 1. Access the entire data set
+for (rowNumber, row) in resultSet.data.enumerated() {
+	// Each row is a dictionary of column_name : value
+	let identifier = row["id"]
+	print("Identifier in Row #\(rowNumber) = \(identifier)")
+}
+
+// 2. Accessing individual rows
+let fourthRow = resultSet[4]
+for (columnName, columnValue) in fourthRow {
+	print("\(columnName): \(columnValue)")
+}
+
+// 3. Accessing individual columns
+let nameColumn = resultSet["name"]
+for (rowNumber, rowValue) in nameColumn.enumerated() {
+	print("Name in Row #\(rowNumber) = \(rowValue)")
+}
+```

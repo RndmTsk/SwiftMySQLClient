@@ -70,6 +70,20 @@ class MySQLClientTests: XCTestCase {
         switch statement.execute(with: values) {
         case .success(let resultSet):
             print("[\(statement.description)] Success: \(resultSet)")
+            for row in resultSet.data {
+                print("Row: \(row)")
+            }
+            guard resultSet.data.count > 0 else {
+                return
+            }
+            let firstRow = resultSet[0]
+            for (columnName, columnValue) in firstRow {
+                print("\(columnName): \(columnValue)")
+            }
+            let nameColumn = resultSet["name"]
+            for (rowNumber, rowValue) in nameColumn.enumerated() {
+                print("Name in Row #\(rowNumber) = \(rowValue)")
+            }
         case .failure(let error):
             print("[\(statement.description)] Error: \(error)")
         }
