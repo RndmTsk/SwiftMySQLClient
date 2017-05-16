@@ -265,14 +265,21 @@ public extension MySQL {
                     guard let representedValue = value as? UInt8LSBArrayMappable else {
                         return ClientError.unsupportedDataType
                     }
+                    // TODO: (TL) Support nil / omitted values?
                     if value is NSNull || (value is String && (value as! String).lowercased() == "null") {
                         nullBitMap[(index / 8)] |= UInt8(1 << (index % 8) & 0xff)
                     } else {
                         guard let columnData = preparedStatement.columnData(for: index) else {
                             return ClientError.invalidColumn
                         }
+/* TODO: (TL) Interesting?
+                        if ((mi.displayStyle == .optional) && (mi.children.count == 0)) || v is NSNull {
+                            dataTypeArr += [UInt8].UInt16Array(UInt16(MysqlTypes.MYSQL_TYPE_NULL))
+                            continue
+                        }
+ */
                         fieldKeys.append(contentsOf: columnData)
-                        fieldValues.append(contentsOf: [1, 0])
+                        fieldValues.append(contentsOf: representedValue.asUInt8Array)
                         // TODO: (TL) representedValue by columnData type (including restricting to proper size)
                     }
                 }

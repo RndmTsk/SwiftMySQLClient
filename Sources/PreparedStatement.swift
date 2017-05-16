@@ -116,8 +116,8 @@ public extension MySQL {
              
              a flag byte which has the highest bit set if the type is unsigned [80]
              */
-            let firstByte = columns[index].flags.contains(.unsigned) ? Constants.unsignedMarker : 0
-            return [firstByte, columns[index].columnType.rawValue]
+            let flagByte = columns[index].flags.contains(.unsigned) ? Constants.unsignedMarker : 0
+            return [columns[index].columnType.rawValue, flagByte]
         }
     }
 }
