@@ -15,6 +15,24 @@ class MySQLClientTests: XCTestCase {
         XCTAssertEqual(config.capabilities, MySQL.ClientConfiguration.baseCapabilities)
     }
 
+    func testConfigurationWithDatabaseCreation() {
+        let config = MySQL.ClientConfiguration(host: host, database: database)
+        XCTAssertEqual(config.host, host)
+        XCTAssertEqual(config.port, 3306) // Default port
+        XCTAssertEqual(config.database, database)
+        XCTAssertNil(config.credentials)
+        XCTAssertEqual(config.capabilities, [MySQL.ClientConfiguration.baseCapabilities, MySQL.CapabilityFlag.clientConnectWithDB])
+    }
+
+    func testConfigurationWithCredentialsCreation() {
+        let config = MySQL.ClientConfiguration(host: host, credentials: credentials)
+        XCTAssertEqual(config.host, host)
+        XCTAssertEqual(config.port, 3306) // Default port
+        XCTAssertNil(config.database)
+        XCTAssertEqual(config.credentials, credentials)
+        XCTAssertEqual(config.capabilities, MySQL.ClientConfiguration.baseCapabilities)
+    }
+
     func testConnect() {
         let credentials = URLCredential(user: "snack", password: "snack", persistence: .none)
         let configuration = MySQL.ClientConfiguration(host: "localhost", database: "snacktracker", credentials: credentials)
