@@ -15,7 +15,7 @@ public extension MySQL {
         /// The host IP or name of the MySQL instance.
         public let host: String
         /// The port on which to connect to the MySQL instance.
-        public let port: Int32
+        public let port: Int
         /// An optional property representing the name of the database to use by default.
         public let database: String?
         /// An optional property representing the credentials to be used when connecting to the database.
@@ -45,14 +45,17 @@ public extension MySQL {
                     database: String? = nil,
                     credentials: URLCredential? = nil) {
             self.host = host
-            self.port = Int32(port)
+            self.port = port
             self.database = database
             self.credentials = credentials
 
             if database == nil {
                 self.capabilities = ClientConfiguration.baseCapabilities
             } else { // If a DB is specified, add the flag.
-                self.capabilities = [ClientConfiguration.baseCapabilities, .clientConnectWithDB]
+                self.capabilities = [
+                    ClientConfiguration.baseCapabilities,
+                    .clientConnectWithDB
+                ]
             }
         }
     }

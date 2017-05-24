@@ -2,6 +2,19 @@ import XCTest
 @testable import SwiftMySQLClient
 
 class MySQLClientTests: XCTestCase {
+    let host = "localhost"
+    let database = "birds"
+    let credentials = URLCredential(user: "root", password: "", persistence: .none)
+
+    func testDefaultConfigurationCreation() {
+        let config = MySQL.ClientConfiguration(host: host)
+        XCTAssertEqual(config.host, host)
+        XCTAssertEqual(config.port, 3306) // Default port
+        XCTAssertNil(config.database)
+        XCTAssertNil(config.credentials)
+        XCTAssertEqual(config.capabilities, MySQL.ClientConfiguration.baseCapabilities)
+    }
+
     func testConnect() {
         let credentials = URLCredential(user: "snack", password: "snack", persistence: .none)
         let configuration = MySQL.ClientConfiguration(host: "localhost", database: "snacktracker", credentials: credentials)

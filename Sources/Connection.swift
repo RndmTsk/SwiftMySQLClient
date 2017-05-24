@@ -18,6 +18,7 @@ public extension MySQL {
         // MARK: - Constants
         private struct Constants {
             static let headerSize = 4
+            static let startTransaction = "START TRANSACTION"
         }
 
         // MARK: - Enums
@@ -113,6 +114,17 @@ public extension MySQL {
             throw error
         }
 
+        // MARK: - Transactions
+        public func startTransaction() -> Result<Transaction> {
+            guard socket != nil, state == .connected else {
+                    return .failure(ClientError.noConnection)
+            }
+            if let error = issue(.query, with: Constants.startTransaction) {
+                return .failure(error)
+            }
+            return .success(Transaction(connection: self))
+        }
+
         // MARK: - Common Command Helper Functions
         public func query(_ statement: String) -> Result<ResultSet> {
             if let error = issue(.query, with: statement) {
@@ -161,7 +173,7 @@ public extension MySQL {
                 throw ClientError.noConnection
             }
             state = .connecting
-            try socket.connect(to: configuration.host, port: configuration.port)
+            try socket.connect(to: configuration.host, port: Int32(configuration.port))
         }
 
         /**
@@ -227,7 +239,7 @@ public extension MySQL {
          1 new-params-bound-flag
          if new-params-bound-flag == 1:
          n type of each parameter, length: num-params*2
-         n value of each parameter
+         n value of each parameter (value, signed-ness)
          
          *** NOTE ***
          // COM_STMT_EXECUTE, num-fields, field-pos offset == 0
