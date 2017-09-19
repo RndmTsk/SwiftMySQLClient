@@ -115,20 +115,20 @@ public extension Data {
         let length: Int
         if typeFlag < 0xfb { // 1-byte integer
             length = 1
-        } else if typeFlag == 0xfb { // NULL
+        } else if typeFlag == 0xfb { // [251] NULL
             return (0, self)
-        } else if typeFlag == 0xfc { // 2-byte integer
+        } else if typeFlag == 0xfc { // [252] 2-byte integer
             length = 2
-        } else if typeFlag == 0xfd { // 3-byte integer
+        } else if typeFlag == 0xfd { // [253] 3-byte integer
             length = 3
-        } else if typeFlag == 0xfe { // 8-byte integer
+        } else if typeFlag == 0xfe { // [254] 8-byte integer
             length = 8
         } else if typeFlag == 0xff { // ERROR
             return (0, self)
         } else {
             length = 0
         }
-        return (int(of: length), subdata(in: length..<count))
+        return (int(of: length), subdata(in: Swift.min(length, count)..<count))
     }
 
     // TODO: (TL) uint of length
