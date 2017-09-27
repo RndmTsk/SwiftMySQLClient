@@ -15,33 +15,33 @@ internal extension MySQL {
             internal static let headerLength = 4
         }
         internal let number: UInt8
-        internal let length: Int
-        internal var totalLength: Int {
-            return length + Constants.headerLength
+        internal let bodyLength: Int
+        internal var length: Int {
+            return bodyLength + Constants.headerLength
         }
         internal let body: Data
 
         internal var description: String {
-            return "[#\(number)]{READ} \(totalLength) bytes"
+            return "[#\(number)]{READ} \(length) bytes"
         }
 
-        init(data: Data) throws {
+        init?(data: Data) {
             guard data.count > 0 else {
-                throw PacketError.noData
+                return nil
             }
             guard data.count > Constants.headerLength else {
-                throw PacketError.incorrectHeaderLength
+                return nil
             }
-            let length = data.int(of: 3)
-            guard data.count - Constants.headerLength >= length else {
-                throw PacketError.incorrectBodyLength
+            let bodyLength = data.int(of: 3)
+            guard data.count - Constants.headerLength >= bodyLength else {
+                return nil
             }
-            // Message length takes up the first 3 bytes
-            self.length = length
+            // Message bodyLength takes up the first 3 bytes
+            self.bodyLength = bodyLength
             // Packet number is the 4th byte of the header
             self.number = data[3]
             // Body is remaining data
-            self.body = data.subdata(in: Constants.headerLength..<Constants.headerLength + length)
+            self.body = data.subdata(in: Constants.headerLength..<Constants.headerLength + bodyLength)
         }
     }
 }

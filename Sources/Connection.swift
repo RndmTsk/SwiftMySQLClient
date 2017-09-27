@@ -335,35 +335,50 @@ public extension MySQL {
          A helper function that attempts to parse a raw `Packet` from the socket stream.
 
          - parameter socket: The socket object previously created.
-         - returns: A `Packet` object if successfully parsed.
-         - throws: Any socket error encountered during the read process, any packet creation error if invalid data is received.
+         - returns: A `Packet` object if successfully parsed. An error otherwise.
          */
         private func receive() -> Result<[Packet]> {
-            // TODO: (TL) see if we need to read more
             // TODO: (TL) Verify sequence numbers
             guard let socket = socket else {
                 state = .disconnected
                 return .failure(ClientError.noConnection)
             }
-            var data = Data(capacity: Constants.headerSize)
+            var fullData = Data(capacity: Constants.headerSize)
+            var result: Result<[Packet]>? = nil
             do {
-                let bytesRead = try socket.read(into: &data)
-                print("Read \(bytesRead) bytes")
-                return .success(try chunk(data))
+                var interimData = Data(capacity: Constants.headerSize)
+                // Can't base retry on bytes read, the socket will "miss"
+                // data if it's busy processing a 0 length response
+                while result == nil {
+                    let bytesRead = try socket.read(into: &interimData)
+                    fullData.append(interimData)
+                    // Try to materialize a meaningful response
+                    result = chunk(fullData)
+                    if let error = result?.error as? ClientError,
+                        error == ClientError.couldNotMaterializeResponse,
+                        interimData.count > 0 {
+                        print("[MySQL][#?]{READ} \(bytesRead) bytes (partial)")
+                        result = nil // Keep trying for more
+                    }
+                    print("[MySQL][#\(result?.value?.first?.number ?? 0)]{READ} \(bytesRead) bytes")
+                }
             } catch {
                 return .failure(error)
             }
+            return result ?? .failure(ClientError.couldNotMaterializeResponse)
         }
 
-        private func chunk(_ data: Data) throws -> [Packet] {
+        private func chunk(_ data: Data) -> Result<[Packet]> {
             var packets = [Packet]()
             var remaining = data
             repeat {
-                let packet = try Packet(data: remaining)
+                guard let packet = Packet(data: remaining) else {
+                    return .failure(ClientError.couldNotMaterializeResponse)
+                }
                 packets.append(packet)
-                remaining.droppingFirst(packet.totalLength)
+                remaining.droppingFirst(packet.length)
             } while remaining.count > 0
-            return packets
+            return .success(packets)
         }
 
         internal func receiveCommandResponse() -> Result<ResultSet> {
@@ -429,7 +444,7 @@ public extension MySQL {
             } catch {
                 return error
             }
-            print("[#\(sequenceNumber)]{WRITE} \(data.count) bytes")
+            print("[MySQL][#\(sequenceNumber)]{WRITE} \(data.count) bytes")
             return nil
         }
 

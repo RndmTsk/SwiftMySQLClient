@@ -110,6 +110,7 @@ public extension MySQL {
     public enum ClientError: Error {
         case noConnection
         case invalidHandshake
+        case couldNotMaterializeResponse
         case receivedNoResponse
         case receivedExtraPackets
         case unsupportedDataType
